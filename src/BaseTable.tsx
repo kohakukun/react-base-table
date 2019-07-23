@@ -1,35 +1,22 @@
-import React from 'react';
-import PropTypes from 'prop-types';
 import cn from 'classnames';
 import memoize from 'memoize-one';
-
+import React from 'react';
+import Column, { Alignment, FrozenDirection, IColumnProps } from './Column';
+import ColumnManager from './ColumnManager';
+import ColumnResizer from './ColumnResizer';
+import ExpandIcon from './ExpandIcon';
 import GridTable from './GridTable';
+import SortIndicator from './SortIndicator';
+import SortOrder from './SortOrder';
+import TableCell from './TableCell';
+import TableHeaderCell from './TableHeaderCell';
 import TableHeaderRow from './TableHeaderRow';
 import TableRow from './TableRow';
-import TableHeaderCell from './TableHeaderCell';
-import TableCell from './TableCell';
-import Column, { Alignment, FrozenDirection } from './Column';
-import SortOrder from './SortOrder';
-import ExpandIcon from './ExpandIcon';
-import SortIndicator from './SortIndicator';
-import ColumnResizer from './ColumnResizer';
-import ColumnManager from './ColumnManager';
+import { callOrReturn, cloneArray, flattenOnKeys, getScrollbarSize as defaultGetScrollbarSize, getValue, hasChildren,
+  isObjectEqual, noop, normalizeColumns, renderElement, throttle } from './utils';
+import { Align, GridChildComponentProps } from 'react-window';
 
-import {
-  renderElement,
-  normalizeColumns,
-  getScrollbarSize as defaultGetScrollbarSize,
-  isObjectEqual,
-  callOrReturn,
-  hasChildren,
-  flattenOnKeys,
-  cloneArray,
-  getValue,
-  throttle,
-  noop,
-} from './utils';
-
-const getContainerStyle = (width, maxWidth, height) => ({
+const getContainerStyle = (width:number, maxWidth: number, height: number) => ({
   width,
   maxWidth,
   height,
@@ -43,13 +30,37 @@ const DEFAULT_COMPONENTS = {
   SortIndicator,
 };
 
+
 const RESIZE_THROTTLE_WAIT = 50;
 
+interface ICollectionObject {
+  expanded: string[]; rowData: any; rowIndex: number; rowKey: string;
+  depth: number;
+  isScrolling: boolean;
+  columnIndex: number;
+}
+type RendererArgs = GridChildComponentProps & {rowData: any, columns: object[]};
 /**
  * React table component
  */
-class BaseTable extends React.PureComponent {
-  constructor(props) {
+class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
+  private columnManager: ColumnManager;
+  private _scrollbarPresenceChanged = false;
+  private _scroll = { scrollLeft: 0, scrollTop: 0 };
+  private _scrollHeight = 0;
+  private _lastScannedRowIndex = -1;
+  private _hasDataChangedSinceEndReached = true;
+  private _data: any[];
+  private _depthMap: {[key: string]: number} = {};
+  private _horizontalScrollbarSize = 0;
+  private _verticalScrollbarSize = 0;
+  private table: GridTable;
+  private leftTable: GridTable;
+  private rightTable: GridTable;
+  private _flattenOnKeys: (tree: any[], keys: string[], dataKey: string) => any[];
+
+  private _getLeftTableContainerStyle = memoize(getContainerStyle);
+  constructor(props: IBaseTableProps) {
     super(props);
 
     const { columns, children, expandedRowKeys, defaultExpandedRowKeys } = props;
@@ -62,50 +73,18 @@ class BaseTable extends React.PureComponent {
     };
     this.columnManager = new ColumnManager(columns || normalizeColumns(children), props.fixed);
 
-    this._setMainTableRef = this._setMainTableRef.bind(this);
-    this._setLeftTableRef = this._setLeftTableRef.bind(this);
-    this._setRightTableRef = this._setRightTableRef.bind(this);
-
-    this.renderExpandIcon = this.renderExpandIcon.bind(this);
-    this.renderRow = this.renderRow.bind(this);
-    this.renderRowCell = this.renderRowCell.bind(this);
-    this.renderHeader = this.renderHeader.bind(this);
-    this.renderHeaderCell = this.renderHeaderCell.bind(this);
-
-    this._handleScroll = this._handleScroll.bind(this);
-    this._handleVerticalScroll = this._handleVerticalScroll.bind(this);
-    this._handleRowsRendered = this._handleRowsRendered.bind(this);
-    this._handleRowHover = this._handleRowHover.bind(this);
-    this._handleRowExpand = this._handleRowExpand.bind(this);
     this._handleColumnResize = throttle(this._handleColumnResize.bind(this), RESIZE_THROTTLE_WAIT);
-    this._handleColumnResizeStart = this._handleColumnResizeStart.bind(this);
-    this._handleColumnResizeStop = this._handleColumnResizeStop.bind(this);
-    this._handleColumnSort = this._handleColumnSort.bind(this);
-
-    this._getLeftTableContainerStyle = memoize(getContainerStyle);
-    this._getRightTableContainerStyle = memoize(getContainerStyle);
-    this._flattenOnKeys = memoize((tree, keys, dataKey) => {
+    this._data = props.data;
+    this._flattenOnKeys = memoize((tree: any[], keys: string[], dataKey: string) => {
       this._depthMap = {};
       return flattenOnKeys(tree, keys, this._depthMap, dataKey);
     });
-
-    this._scroll = { scrollLeft: 0, scrollTop: 0 };
-    this._scrollHeight = 0;
-    this._lastScannedRowIndex = -1;
-    this._hasDataChangedSinceEndReached = true;
-
-    this._data = props.data;
-    this._depthMap = {};
-
-    this._horizontalScrollbarSize = 0;
-    this._verticalScrollbarSize = 0;
-    this._scrollbarPresenceChanged = false;
   }
 
   /**
    * Get the expanded state, fallback to normal state if not expandable.
    */
-  getExpandedState() {
+  public getExpandedState() {
     return {
       expandedData: this._data,
       expandedRowKeys: this.state.expandedRowKeys,
@@ -116,14 +95,14 @@ class BaseTable extends React.PureComponent {
   /**
    * Get the total height of all rows, including expanded rows.
    */
-  getTotalRowsHeight() {
+  public getTotalRowsHeight() {
     return this._data.length * this.props.rowHeight;
   }
 
   /**
    * Get the total width of all columns.
    */
-  getTotalColumnsWidth() {
+  public getTotalColumnsWidth() {
     return this.columnManager.getColumnsWidth();
   }
 
@@ -134,7 +113,7 @@ class BaseTable extends React.PureComponent {
    * Use this method if you want to manually trigger a re-render.
    * This may be appropriate if the underlying row data has changed but the row sizes themselves have not.
    */
-  forceUpdateTable() {
+  public forceUpdateTable() {
     this.table && this.table.forceUpdateTable();
     this.leftTable && this.leftTable.forceUpdateTable();
     this.rightTable && this.rightTable.forceUpdateTable();
@@ -144,11 +123,10 @@ class BaseTable extends React.PureComponent {
    * Scroll to the specified offset.
    * Useful for animating position changes.
    *
-   * @param {object} offset
+   * @param offset
    */
-  scrollToPosition(offset) {
+  public scrollToPosition(offset: {scrollLeft: number, scrollTop: number}) {
     this._scroll = offset;
-
     this.table && this.table.scrollToPosition(offset);
     this.leftTable && this.leftTable.scrollToTop(offset.scrollTop);
     this.rightTable && this.rightTable.scrollToTop(offset.scrollTop);
@@ -157,9 +135,9 @@ class BaseTable extends React.PureComponent {
   /**
    * Scroll to the specified offset vertically.
    *
-   * @param {number} scrollTop
+   * @param scrollTop
    */
-  scrollToTop(scrollTop) {
+  public scrollToTop(scrollTop: number) {
     this._scroll.scrollTop = scrollTop;
 
     this.table && this.table.scrollToPosition(this._scroll);
@@ -170,9 +148,9 @@ class BaseTable extends React.PureComponent {
   /**
    * Scroll to the specified offset horizontally.
    *
-   * @param {number} scrollLeft
+   * @param scrollLeft
    */
-  scrollToLeft(scrollLeft) {
+  public scrollToLeft(scrollLeft: number) {
     this._scroll.scrollLeft = scrollLeft;
 
     this.table && this.table.scrollToPosition(this._scroll);
@@ -195,7 +173,7 @@ class BaseTable extends React.PureComponent {
    * @param {number} rowIndex 
    * @param {string} align 
    */
-  scrollToRow(rowIndex = 0, align = 'auto') {
+  public scrollToRow(rowIndex: number = 0, align: Align = 'auto') {
     this.table && this.table.scrollToRow(rowIndex, align);
     this.leftTable && this.leftTable.scrollToRow(rowIndex, align);
     this.rightTable && this.rightTable.scrollToRow(rowIndex, align);
@@ -205,9 +183,9 @@ class BaseTable extends React.PureComponent {
    * Set `expandedRowKeys` manually.
    * This method is available only if `expandedRowKeys` is uncontrolled.
    *
-   * @param {array} expandedRowKeys
+   * @param expandedRowKeys
    */
-  setExpandedRowKeys(expandedRowKeys) {
+  public setExpandedRowKeys(expandedRowKeys: string[]) {
     // if `expandedRowKeys` is controlled
     if (this.props.expandedRowKeys !== undefined) return;
 
@@ -216,7 +194,7 @@ class BaseTable extends React.PureComponent {
     });
   }
 
-  renderExpandIcon({ rowData, rowIndex, depth, onExpand }) {
+  public renderExpandIcon = ({ rowData, rowIndex, depth, onExpand }: ICollectionObject) => {
     const { rowKey, expandColumnKey, expandIconProps } = this.props;
     if (!expandColumnKey) return null;
 
@@ -228,7 +206,7 @@ class BaseTable extends React.PureComponent {
     return <ExpandIcon depth={depth} expandable={expandable} expanded={expanded} {...extraProps} onExpand={onExpand} />;
   }
 
-  renderRow({ isScrolling, columns, rowData, rowIndex, style }) {
+  public renderRow = ({ isScrolling, columns, rowData, rowIndex, style }: RendererArgs) => {
     const { rowClassName, rowRenderer, rowEventHandlers, expandColumnKey } = this.props;
 
     const rowClass = callOrReturn(rowClassName, { columns, rowData, rowIndex });
@@ -269,7 +247,8 @@ class BaseTable extends React.PureComponent {
     return <TableRow {...rowProps} />;
   }
 
-  renderRowCell({ isScrolling, columns, column, columnIndex, rowData, rowIndex, expandIcon }) {
+  public renderRowCell = ({ isScrolling, columns, column, columnIndex, rowData, rowIndex, expandIcon }:
+    ICollectionObject) => {
     if (column[ColumnManager.PlaceholderKey]) {
       return (
         <div
@@ -312,7 +291,7 @@ class BaseTable extends React.PureComponent {
     );
   }
 
-  renderHeader({ columns, headerIndex, style }) {
+  public renderHeader = ({ columns, headerIndex, style }: {style: React.CSSProperties, headerIndex: number}) => {
     const { headerClassName, headerRenderer } = this.props;
 
     const headerClass = callOrReturn(headerClassName, { columns, headerIndex });
@@ -340,7 +319,7 @@ class BaseTable extends React.PureComponent {
     return <TableHeaderRow {...headerProps} />;
   }
 
-  renderHeaderCell({ columns, column, columnIndex, headerIndex, expandIcon }) {
+  private renderHeaderCell = ({ columns, column, columnIndex, headerIndex, expandIcon }) => {
     if (column[ColumnManager.PlaceholderKey]) {
       return (
         <div
@@ -557,7 +536,7 @@ class BaseTable extends React.PureComponent {
     const headerHeight = this._getHeaderHeight();
     return (
       <div className={this._prefixClass('empty-layer')} style={{ top: headerHeight, bottom: footerHeight }}>
-        {renderElement(emptyRenderer)}
+        {renderElement(emptyRenderer, {})}
       </div>
     );
   }
@@ -565,7 +544,7 @@ class BaseTable extends React.PureComponent {
   renderOverlay() {
     const { overlayRenderer } = this.props;
 
-    return <div className={this._prefixClass('overlay')}>{!!overlayRenderer && renderElement(overlayRenderer)}</div>;
+    return <div className={this._prefixClass('overlay')}>{!!overlayRenderer && renderElement(overlayRenderer, {})}</div>;
   }
 
   render() {
@@ -590,7 +569,7 @@ class BaseTable extends React.PureComponent {
     // should be after `this._data` assigned
     this._calcScrollbarSizes();
 
-    const containerStyle = {
+    const containerStyle: React.CSSProperties = {
       ...style,
       width,
       height: this._getTableHeight() + footerHeight,
@@ -617,7 +596,7 @@ class BaseTable extends React.PureComponent {
     );
   }
 
-  componentWillReceiveProps(nextProps) {
+  public componentWillReceiveProps(nextProps: IBaseTableProps) {
     const nextColumns = nextProps.columns || normalizeColumns(nextProps.children);
     const columns = this.columnManager.getOriginalColumns();
     if (!isObjectEqual(nextColumns, columns) || nextProps.fixed !== this.props.fixed) {
@@ -651,8 +630,8 @@ class BaseTable extends React.PureComponent {
       this.setState({ scrollbarSize });
     }
   }
-
-  componentDidUpdate(prevProps, prevState) {
+  
+  public componentDidUpdate(prevProps, prevState) {
     this._maybeScrollbarPresenceChange();
   }
 
@@ -660,24 +639,24 @@ class BaseTable extends React.PureComponent {
     return `${this.props.classPrefix}__${className}`;
   }
 
-  _setMainTableRef(ref) {
+  private _setMainTableRef = (ref: GridTable) => {
     this.table = ref;
   }
 
-  _setLeftTableRef(ref) {
+  private _setLeftTableRef = (ref: GridTable) => {
     this.leftTable = ref;
   }
 
-  _setRightTableRef(ref) {
+  private _setRightTableRef = (ref: GridTable) => {
     this.rightTable = ref;
   }
 
-  _getComponent(name) {
+  private _getComponent(name) {
     if (this.props.components && this.props.components[name]) return this.props.components[name];
     return DEFAULT_COMPONENTS[name];
   }
 
-  _getHeaderHeight() {
+  private _getHeaderHeight() {
     const { headerHeight } = this.props;
     if (Array.isArray(headerHeight)) {
       return headerHeight.reduce((sum, height) => sum + height, 0);
@@ -685,7 +664,7 @@ class BaseTable extends React.PureComponent {
     return headerHeight;
   }
 
-  _getFrozenRowsHeight() {
+  private _getFrozenRowsHeight() {
     const { frozenData, rowHeight } = this.props;
     return frozenData.length * rowHeight;
   }
@@ -794,7 +773,7 @@ class BaseTable extends React.PureComponent {
     }
   }
 
-  _handleScroll(args) {
+  private _handleScroll = (args) => {
     const lastScrollTop = this._scroll.scrollTop;
     this.scrollToPosition(args);
     this.props.onScroll(args);
@@ -802,14 +781,14 @@ class BaseTable extends React.PureComponent {
     if (args.scrollTop > lastScrollTop) this._maybeCallOnEndReached();
   }
 
-  _handleVerticalScroll({ scrollTop }) {
+  private _handleVerticalScroll = ({ scrollTop }) => {
     const lastScrollTop = this._scroll.scrollTop;
     this.scrollToTop(scrollTop);
 
     if (scrollTop > lastScrollTop) this._maybeCallOnEndReached();
   }
 
-  _handleRowsRendered(args) {
+  private _handleRowsRendered = (args) => {
     this.props.onRowsRendered(args);
 
     if (args.overscanStopIndex > this._lastScannedRowIndex) {
@@ -818,11 +797,12 @@ class BaseTable extends React.PureComponent {
     }
   }
 
-  _handleRowHover({ hovered, rowKey }) {
+  private _handleRowHover = ({ hovered, rowKey }: {hovered: string[], rowKey: string}) => {
     this.setState({ hoveredRowKey: hovered ? rowKey : null });
   }
 
-  _handleRowExpand({ expanded, rowData, rowIndex, rowKey }) {
+  private _handleRowExpand = (
+    { expanded, rowData, rowIndex, rowKey }: {expanded: string[], rowData: any, rowIndex: number, rowKey: string}) => {
     const expandedRowKeys = cloneArray(this.state.expandedRowKeys);
     if (expanded) {
       if (!expandedRowKeys.indexOf(rowKey) >= 0) expandedRowKeys.push(rowKey);
@@ -848,15 +828,15 @@ class BaseTable extends React.PureComponent {
     this.props.onColumnResize({ column, width });
   }
 
-  _handleColumnResizeStart({ key }) {
+  private _handleColumnResizeStart = ({ key }) => {
     this.setState({ resizingKey: key });
   }
 
-  _handleColumnResizeStop() {
+  private _handleColumnResizeStop = () => {
     this.setState({ resizingKey: null });
   }
 
-  _handleColumnSort(event) {
+  private _handleColumnSort = (event: Event) => {
     const key = event.currentTarget.dataset.key;
     const { sortBy, sortState, onColumnSort } = this.props;
     let order = SortOrder.ASC;
@@ -870,194 +850,200 @@ class BaseTable extends React.PureComponent {
     const column = this.columnManager.getColumn(key);
     onColumnSort({ column, key, order });
   }
+  static Column = Column;
+  static PlaceholderKey = ColumnManager.PlaceholderKey;
+  public static defaultProps = {
+    classPrefix: 'BaseTable',
+    rowKey: 'id',
+    data: [],
+    frozenData: [],
+    fixed: false,
+    headerHeight: 50,
+    rowHeight: 50,
+    footerHeight: 0,
+    defaultExpandedRowKeys: [],
+    sortBy: {},
+    useIsScrolling: false,
+    overscanRowCount: 1,
+    onEndReachedThreshold: 500,
+    getScrollbarSize: defaultGetScrollbarSize,
+  
+    onScroll: noop,
+    onRowsRendered: noop,
+    onScrollbarPresenceChange: noop,
+    onRowExpand: noop,
+    onExpandedRowsChange: noop,
+    onColumnSort: noop,
+    onColumnResize: noop,
+  };
 }
 
-BaseTable.Column = Column;
-BaseTable.PlaceholderKey = ColumnManager.PlaceholderKey;
+interface IBaseTableState {
+  scrollbarSize: number;
+  hoveredRowKey?: string;
+  resizingKey?: string;
+  resizingWidth: number;
+  expandedRowKeys: string[];
+}
 
-BaseTable.defaultProps = {
-  classPrefix: 'BaseTable',
-  rowKey: 'id',
-  data: [],
-  frozenData: [],
-  fixed: false,
-  headerHeight: 50,
-  rowHeight: 50,
-  footerHeight: 0,
-  defaultExpandedRowKeys: [],
-  sortBy: {},
-  useIsScrolling: false,
-  overscanRowCount: 1,
-  onEndReachedThreshold: 500,
-  getScrollbarSize: defaultGetScrollbarSize,
-
-  onScroll: noop,
-  onRowsRendered: noop,
-  onScrollbarPresenceChange: noop,
-  onRowExpand: noop,
-  onExpandedRowsChange: noop,
-  onColumnSort: noop,
-  onColumnResize: noop,
-};
-
-BaseTable.propTypes = {
+export interface IBaseTableProps<T = any> {
   /**
    * Prefix for table's inner className
    */
-  classPrefix: PropTypes.string,
+  classPrefix?: string;
   /**
    * Class name for the table
    */
-  className: PropTypes.string,
+  className?: string;
   /**
    * Custom style for the table
    */
-  style: PropTypes.object,
+  style?: React.CSSProperties;
   /**
    * A collection of Column
    */
-  children: PropTypes.node,
+  children: React.ReactNode;
   /**
    * Columns for the table
    */
-  columns: PropTypes.arrayOf(PropTypes.shape(Column.propTypes)),
+  columns?: IColumnProps[];
   /**
    * The data for the table
    */
-  data: PropTypes.arrayOf(PropTypes.object).isRequired,
+  data?: T[];
   /**
    * The data be frozen to top, `rowIndex` is negative and started from `-1`
    */
-  frozenData: PropTypes.arrayOf(PropTypes.object),
+  frozenData?: T[];
   /**
    * The key field of each data item
    */
-  rowKey: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  rowKey: string | number;
   /**
    * The width of the table
    */
-  width: PropTypes.number.isRequired,
+  width: number;
   /**
    * The height of the table, will be ignored if `maxHeight` is set
    */
-  height: PropTypes.number,
+  height?: number;
   /**
    * The max height of the table, the table's height will auto change when data changes,
    * will turns to vertical scroll if reaches the max height
    */
-  maxHeight: PropTypes.number,
+  maxHeight?: number;
   /**
    * The height of each table row
    */
-  rowHeight: PropTypes.number.isRequired,
+  rowHeight: number;
   /**
    * The height of the table header, set to 0 to hide the header, could be an array to render multi headers.
    */
-  headerHeight: PropTypes.oneOfType([PropTypes.number, PropTypes.arrayOf(PropTypes.number)]).isRequired,
+  headerHeight: number | number[];
   /**
    * The height of the table footer
    */
-  footerHeight: PropTypes.number,
+  footerHeight?: number;
   /**
    * Whether the width of the columns are fixed or flexible
    */
-  fixed: PropTypes.bool,
+  fixed?: boolean;
   /**
    * Whether the table is disabled
    */
-  disabled: PropTypes.bool,
+  disabled?: boolean;
   /**
    * Custom renderer on top of the table component
    */
-  overlayRenderer: PropTypes.oneOfType([PropTypes.func, PropTypes.element]),
+  overlayRenderer?: Function | React.ReactElement;
   /**
    * Custom renderer when the length of data is 0
    */
-  emptyRenderer: PropTypes.oneOfType([PropTypes.func, PropTypes.element]),
+  emptyRenderer?: Function | React.ReactElement;
   /**
    * Custom footer renderer, available only if `footerHeight` is larger then 0
    */
-  footerRenderer: PropTypes.oneOfType([PropTypes.func, PropTypes.element]),
+  footerRenderer?: Function | React.ReactElement;
   /**
    * Custom header renderer
    * The renderer receives props `{ cells, columns, headerIndex }`
    */
-  headerRenderer: PropTypes.oneOfType([PropTypes.func, PropTypes.element]),
+  headerRenderer?: Function | React.ReactElement;
   /**
    * Custom row renderer
    * The renderer receives props `{ isScrolling, cells, columns, rowData, rowIndex, depth }`
    */
-  rowRenderer: PropTypes.oneOfType([PropTypes.func, PropTypes.element]),
+  rowRenderer?: Function | React.ReactElement;
   /**
    * Class name for the table header, could be a callback to return the class name
    * The callback is of the shape of `({ columns, headerIndex }) => string`
    */
-  headerClassName: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+  headerClassName?: string | Function;
   /**
    * Class name for the table row, could be a callback to return the class name
    * The callback is of the shape of `({ columns, rowData, rowIndex }) => string`
    */
-  rowClassName: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+  rowClassName?: string | Function
   /**
    * Extra props applied to header element
    * The handler is of the shape of `({ columns, headerIndex }) object`
    */
-  headerProps: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
+  headerProps?: object | Function;
   /**
    * Extra props applied to header cell element
    * The handler is of the shape of `({ columns, column, columnIndex, headerIndex }) => object`
    */
-  headerCellProps: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
+  headerCellProps?: object | Function;
   /**
    * Extra props applied to row element
    * The handler is of the shape of `({ columns, rowData, rowIndex }) => object`
    */
-  rowProps: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
+  rowProps?: object | Function;
   /**
    * Extra props applied to row cell element
    * The handler is of the shape of `({ columns, column, columnIndex, rowData, rowIndex }) => object`
    */
-  cellProps: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
+  cellProps?: object | Function;
   /**
    * Extra props applied to ExpandIcon component
    * The handler is of the shape of `({ rowData, rowIndex, depth, expandable, expanded }) => object`
    */
-  expandIconProps: PropTypes.oneOfType([PropTypes.object, PropTypes.func]),
+  expandIconProps?: object | Function;
   /**
    * The key for the expand column which render the expand icon if the data is a tree
    */
-  expandColumnKey: PropTypes.string,
+  expandColumnKey?: string;
   /**
    * Default expanded row keys when initialize the table
    */
-  defaultExpandedRowKeys: PropTypes.arrayOf(PropTypes.oneOfType([PropTypes.string, PropTypes.number])),
+  defaultExpandedRowKeys?: string[] | number[];
   /**
    * Controlled expanded row keys
    */
-  expandedRowKeys: PropTypes.arrayOf(PropTypes.oneOfType([PropTypes.string, PropTypes.number])),
+  expandedRowKeys?: string[] | number[];
   /**
    * A callback function when expand or collapse a tree node
    * The handler is of the shape of `({ expanded, rowData, rowIndex, rowKey }) => *`
    */
-  onRowExpand: PropTypes.func,
+  onRowExpand?: Function;
   /**
    * A callback function when the expanded row keys changed
    * The handler is of the shape of `(expandedRowKeys) => *`
    */
-  onExpandedRowsChange: PropTypes.func,
+  onExpandedRowsChange?: Function;
   /**
    * The sort state for the table, will be ignored if `sortState` is set
    */
-  sortBy: PropTypes.shape({
+  sortBy?: {
     /**
      * Sort key
      */
-    key: PropTypes.string,
+    key: string;
     /**
      * Sort order
      */
-    order: PropTypes.oneOf([SortOrder.ASC, SortOrder.DESC]),
-  }),
+    order: SortOrder.ASC | SortOrder.DESC;
+  };
   /**
    * Multiple columns sort state for the table
    *
@@ -1069,30 +1055,30 @@ BaseTable.propTypes = {
    * }
    * ```
    */
-  sortState: PropTypes.object,
+  sortState?: object,
   /**
    * A callback function for the header cell click event
    * The handler is of the shape of `({ column, key, order }) => *`
    */
-  onColumnSort: PropTypes.func,
+  onColumnSort?: Function,
   /**
    * A callback function when resizing the column width
    * The handler is of the shape of `({ column, width }) => *`
    */
-  onColumnResize: PropTypes.func,
+  onColumnResize?: Function;
   /**
    * Adds an additional isScrolling parameter to the row renderer.
    * This parameter can be used to show a placeholder row while scrolling.
    */
-  useIsScrolling: PropTypes.bool,
+  useIsScrolling?: boolean;
   /**
    * Number of rows to render above/below the visible bounds of the list
    */
-  overscanRowCount: PropTypes.number,
+  overscanRowCount?: number;
   /**
    * Custom scrollbar size measurement
    */
-  getScrollbarSize: PropTypes.func,
+  getScrollbarSize?: Function;
   /**
    * A callback function when scrolling the table
    * The handler is of the shape of `({ scrollLeft, scrollTop, horizontalScrollDirection, verticalScrollDirection, scrollUpdateWasRequested }) => *`
@@ -1104,41 +1090,41 @@ BaseTable.propTypes = {
    * `scrollUpdateWasRequested` is a boolean. This value is true if the scroll was caused by `scrollTo*`,
    * and false if it was the result of a user interaction in the browser.
    */
-  onScroll: PropTypes.func,
+  onScroll?: Function;
   /**
    * A callback function when scrolling the table within `onEndReachedThreshold` of the bottom
    * The handler is of the shape of `({ distanceFromEnd }) => *`
    */
-  onEndReached: PropTypes.func,
+  onEndReached?: Function;
   /**
    * Threshold in pixels for calling `onEndReached`.
    */
-  onEndReachedThreshold: PropTypes.number,
+  onEndReachedThreshold?: number;
   /**
    * A callback function with information about the slice of rows that were just rendered
    * The handler is of the shape of `({ overscanStartIndex, overscanStopIndex, startIndex， stopIndex }) => *`
    */
-  onRowsRendered: PropTypes.func,
+  onRowsRendered?: Function;
   /**
    * A callback function when the scrollbar presence state changed
    * The handler is of the shape of `({ size, vertical, horizontal }) => *`
    */
-  onScrollbarPresenceChange: PropTypes.func,
+  onScrollbarPresenceChange?: Function;
   /**
    * A object for the row event handlers
    * Each of the keys is row event name, like `onClick`, `onDoubleClick` and etc.
    * Each of the handlers is of the shape of `({ rowData, rowIndex, rowKey, event }) => object`
    */
-  rowEventHandlers: PropTypes.object,
+  rowEventHandlers?: object;
   /**
    * A object for the custom components, like `ExpandIcon` and `SortIndicator`
    */
-  components: PropTypes.shape({
-    TableCell: PropTypes.func,
-    TableHeaderCell: PropTypes.func,
-    ExpandIcon: PropTypes.func,
-    SortIndicator: PropTypes.func,
-  }),
+  components: {
+    TableCell: Function;
+    TableHeaderCell: Function;
+    ExpandIcon: Function;
+    SortIndicator: Function;
+  },
 };
 
 export default BaseTable;

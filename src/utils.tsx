@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function renderElement(renderer, props) {
+export function renderElement(renderer, props: any) {
   if (React.isValidElement(renderer)) {
     return React.cloneElement(renderer, props);
   } else if (typeof renderer === 'function') {
@@ -15,18 +15,21 @@ export function renderElement(renderer, props) {
   }
 }
 
-export function normalizeColumns(elements) {
-  const columns = [];
+export type GetProps<C> = C extends React.ElementType<infer P> ? P : never;
+
+export function normalizeColumns<T extends React.ElementType = React.ElementType<any>>(elements: React.ElementType<T>) {
+  type P = GetProps<T>;
+  const columns: P[] = [];
   React.Children.forEach(elements, element => {
     if (React.isValidElement(element) && element.key) {
       const column = { ...element.props, key: element.key };
-      columns.push(column);
+      columns.push(column as P);
     }
   });
   return columns;
 }
 
-export function isObjectEqual(objA, objB) {
+export function isObjectEqual(objA: any, objB: any) {
   if (objA === objB) return true;
   if (objA === null && objB === null) return true;
   if (objA === null || objB === null) return false;
@@ -52,17 +55,17 @@ export function isObjectEqual(objA, objB) {
   return true;
 }
 
-export function callOrReturn(funcOrValue, ...args) {
+export function callOrReturn(funcOrValue: any, ...args: any []) {
   return typeof funcOrValue === 'function' ? funcOrValue(...args) : funcOrValue;
 }
 
-export function hasChildren(data) {
+export function hasChildren(data: any) {
   return Array.isArray(data.children) && data.children.length > 0;
 }
 
-export function unflatten(array, rootId = null, dataKey = 'id', parentKey = 'parentId') {
+export function unflatten(array: any[], rootId: string = null, dataKey: string = 'id', parentKey: string = 'parentId') {
   const tree = [];
-  const childrenMap = {};
+  const childrenMap: {[key: string]: any[]} = {};
 
   const length = array.length;
   for (let i = 0; i < length; i++) {
@@ -84,14 +87,14 @@ export function unflatten(array, rootId = null, dataKey = 'id', parentKey = 'par
   return tree;
 }
 
-export function flattenOnKeys(tree, keys, depthMap = {}, dataKey = 'id') {
+export function flattenOnKeys(tree: any[], keys: string[], depthMap: {[key: string]: number} = {}, dataKey = 'id') {
   if (!keys || !keys.length) return tree;
 
   const array = [];
-  const keysSet = new Set();
+  const keysSet: Set<string> = new Set();
   keys.forEach(x => keysSet.add(x));
 
-  let stack = [].concat(tree);
+  let stack: any[] = [].concat(tree);
   stack.forEach(x => (depthMap[x[dataKey]] = 0));
   while (stack.length > 0) {
     const item = stack.shift();
@@ -99,7 +102,7 @@ export function flattenOnKeys(tree, keys, depthMap = {}, dataKey = 'id') {
     array.push(item);
     if (keysSet.has(item[dataKey]) && Array.isArray(item.children) && item.children.length > 0) {
       stack = [].concat(item.children, stack);
-      item.children.forEach(x => (depthMap[x[dataKey]] = depthMap[item[dataKey]] + 1));
+      item.children.forEach((x: any) => (depthMap[x[dataKey]] = depthMap[item[dataKey]] + 1));
     }
   }
 
@@ -109,20 +112,20 @@ export function flattenOnKeys(tree, keys, depthMap = {}, dataKey = 'id') {
 // Babel7 changed the behavior of @babel/plugin-transform-spread in https://github.com/babel/babel/pull/6763
 // [...array] is transpiled to array.concat() while it was [].concat(array) before
 // this change breaks immutable array(seamless-immutable), [...array] should always return mutable array
-export function cloneArray(array) {
+export function cloneArray(array: any[]) {
   if (!Array.isArray(array)) return [];
   return [].concat(array);
 }
 
 export function noop() {}
 
-export function toString(value) {
+export function toString(value: any) {
   if (typeof value === 'string') return value;
   if (value === null || value === undefined) return '';
   return value.toString ? value.toString() : '';
 }
 
-function getPathSegments(path) {
+function getPathSegments(path: string) {
   const pathArray = path.split('.');
   const parts = [];
 
@@ -141,7 +144,7 @@ function getPathSegments(path) {
 }
 
 // changed from https://github.com/sindresorhus/dot-prop/blob/master/index.js
-export function getValue(object, path, defaultValue) {
+export function getValue<T extends {[key: string]: any}>(object: T, path: string, defaultValue?: T) {
   if (object === null || typeof object !== 'object' || typeof path !== 'string') {
     return defaultValue;
   }
@@ -168,8 +171,8 @@ export function getValue(object, path, defaultValue) {
 }
 
 // copied from https://30secondsofcode.org/function#throttle
-export function throttle(fn, wait) {
-  let inThrottle, lastFn, lastTime;
+export function throttle(fn: Function, wait: number) {
+  let inThrottle: boolean, lastFn: number, lastTime: number;
   return function() {
     const context = this,
       args = arguments;
@@ -190,8 +193,8 @@ export function throttle(fn, wait) {
 }
 
 // copied from https://github.com/react-bootstrap/dom-helpers
-let scrollbarSize;
-export function getScrollbarSize(recalculate) {
+let scrollbarSize: number;
+export function getScrollbarSize(recalculate: boolean) {
   if ((!scrollbarSize && scrollbarSize !== 0) || recalculate) {
     if (typeof window !== 'undefined' && window.document && window.document.createElement) {
       let scrollDiv = document.createElement('div');
@@ -211,7 +214,7 @@ export function getScrollbarSize(recalculate) {
   return scrollbarSize;
 }
 
-export function addClassName(el, className) {
+export function addClassName(el: HTMLElement, className: string) {
   if (el.classList) {
     el.classList.add(className);
   } else {
@@ -221,7 +224,7 @@ export function addClassName(el, className) {
   }
 }
 
-export function removeClassName(el, className) {
+export function removeClassName(el: HTMLElement, className: string) {
   if (el.classList) {
     el.classList.remove(className);
   } else {

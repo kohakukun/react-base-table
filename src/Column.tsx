@@ -1,10 +1,9 @@
 import React from 'react';
-import PropTypes from 'prop-types';
 
-export const Alignment = {
-  LEFT: 'left',
-  CENTER: 'center',
-  RIGHT: 'right',
+export enum Alignment {
+  LEFT = 'left',
+  CENTER = 'center',
+  RIGHT = 'right',
 };
 
 export const FrozenDirection = {
@@ -14,92 +13,95 @@ export const FrozenDirection = {
   NONE: false,
 };
 
+
 /**
  * Column for BaseTable
  */
-class Column extends React.Component {}
+class Column extends React.Component<IColumnProps> {
+  static Alignment = Alignment;
+  static FrozenDirection = FrozenDirection;
+}
 
-Column.propTypes = {
+export interface IColumnProps  {
   /**
    * Class name for the column cell, could be a callback to return the class name
    * The callback is of the shape of `({ cellData, columns, column, columnIndex, rowData, rowIndex }) => string`
    */
-  className: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+  className?: string | Function;
   /**
    * Class name for the column header, could be a callback to return the class name
    * The callback is of the shape of `({ columns, column, columnIndex, headerIndex }) => string`
    */
-  headerClassName: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+  headerClassName?: string | Function;
   /**
    * Custom style for the column cell, including the header cells
    */
-  style: PropTypes.object,
+  style?: React.CSSProperties;
   /**
    * Title for the column header
    */
-  title: PropTypes.string,
+  title?: string;
   /**
    * Data key for the column cell, could be "a.b.c"
    */
-  dataKey: PropTypes.string,
+  dataKey?: string;
   /**
    * Custom cell data getter
    * The handler is of the shape of `({ columns, column, columnIndex, rowData, rowIndex }) => node`
    */
-  dataGetter: PropTypes.func,
+  dataGetter?: Function;
   /**
    * Alignment of the column cell
    */
-  align: PropTypes.oneOf(Object.values(Alignment)),
+  align?:  Alignment.LEFT | Alignment.CENTER | Alignment.RIGHT;
   /**
    * Flex grow style, defaults to 0
    */
-  flexGrow: PropTypes.number,
+  flexGrow?: number;
   /**
    * Flex shrink style, defaults to 1 for flexible table and 0 for fixed table
    */
-  flexShrink: PropTypes.number,
+  flexShrink?: number;
   /**
    * The width of the column, gutter width is not included
    */
-  width: PropTypes.number.isRequired,
+  width: number;
   /**
    * Maximum width of the column, used if the column is resizable
    */
-  maxWidth: PropTypes.number,
+  maxWidth?: number;
   /**
    * Minimum width of the column, used if the column is resizable
    */
-  minWidth: PropTypes.number,
+  minWidth?: number;
   /**
    * Whether the column is frozen and what's the frozen side
    */
-  frozen: PropTypes.oneOf(Object.values(FrozenDirection)),
+  frozen: 'left'  | 'right' | boolean;
   /**
    * Whether the column is hidden
    */
-  hidden: PropTypes.bool,
+  hidden?: boolean;
   /**
    * Whether the column is resizable, defaults to true
    */
-  resizable: PropTypes.bool,
+  resizable?: boolean;
   /**
    * Whether the column is sortable, defaults to true
    */
-  sortable: PropTypes.bool,
+  sortable?: boolean;
   /**
    * Custom column cell renderer
    * The renderer receives props `{ cellData, columns, column, columnIndex, rowData, rowIndex, container, isScrolling }`
    */
-  cellRenderer: PropTypes.oneOfType([PropTypes.func, PropTypes.element]),
+  cellRenderer?: Function | React.ReactElement;
   /**
    * Custom column header renderer
    * The renderer receives props `{ columns, column, columnIndex, headerIndex, container }`
    */
-  headerRenderer: PropTypes.oneOfType([PropTypes.func, PropTypes.element]),
+  headerRenderer?: Function | React.ReactElement;
 };
 
-Column.Alignment = Alignment;
-Column.FrozenDirection = FrozenDirection;
+
 
 export default Column;
