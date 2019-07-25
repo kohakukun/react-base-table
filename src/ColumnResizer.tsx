@@ -3,7 +3,7 @@ import {IColumnProps} from './Column';
 
 import { noop, addClassName, removeClassName } from './utils';
 
-const INVALID_VALUE = null;
+const INVALID_VALUE: null = null;
 
 // copied from https://github.com/mzabriskie/react-draggable/blob/master/lib/utils/domFns.js
 export function addUserSelectStyles(doc: Document) {
@@ -38,7 +38,7 @@ export function removeUserSelectStyles(doc) {
  */
 class ColumnResizer extends React.PureComponent<IColumnResizerProps> {
   private isDragging = false;
-  private lastX = INVALID_VALUE;
+  private lastX: number | typeof INVALID_VALUE = INVALID_VALUE;
   private width = 0;
   private handleRef: HTMLDivElement;
 

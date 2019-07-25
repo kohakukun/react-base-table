@@ -38,6 +38,8 @@ interface ICollectionObject {
   depth: number;
   isScrolling: boolean;
   columnIndex: number;
+  headerIndex: number;
+  colummnIndex: number;
 }
 type RendererArgs = GridChildComponentProps & {rowData: any, columns: object[]};
 /**
@@ -319,7 +321,9 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     return <TableHeaderRow {...headerProps} />;
   }
 
-  private renderHeaderCell = ({ columns, column, columnIndex, headerIndex, expandIcon }) => {
+  private renderHeaderCell = (
+    { columns, column, columnIndex, headerIndex, expandIcon}:
+    Pick<ICollectionObject, 'columns' | 'column' | 'columnIndex' | 'headerIndex', 'expandIcon'>) => {
     if (column[ColumnManager.PlaceholderKey]) {
       return (
         <div
