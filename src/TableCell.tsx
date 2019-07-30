@@ -1,19 +1,19 @@
 import React from 'react';
 import { toString } from './utils';
+import { IColumnProps, IRowEssential } from './Column';
 
-export interface TableCellProps {
-  className: string,
-  cellData: any,
-  column: object,
-  columnIndex: number,
-  rowData: object,
-  rowIndex: number,
+export interface TableCellProps extends IRowEssential{
+  className: string;
+  cellData: any;
+  column: IColumnProps;
+  columnIndex: number;
 }
 
 /**
  * Cell component for BaseTable
  */
-const TableCell: React.FunctionComponent<React.HTMLProps<HTMLDivElement> & TableCellProps> =
+export type TTableCell = React.FunctionComponent<React.HTMLProps<HTMLDivElement> & TableCellProps>;
+const TableCell: TTableCell =
 ({ className, cellData, column, columnIndex, rowData, rowIndex }) => (
   <div className={className}>{React.isValidElement(cellData) ? cellData : toString(cellData)}</div>
 );

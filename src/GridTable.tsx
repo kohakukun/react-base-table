@@ -2,10 +2,12 @@ import React from 'react';
 import cn from 'classnames';
 import { FixedSizeGrid as Grid, GridOnItemsRenderedProps, Align, FixedSizeGridProps } from 'react-window';
 
+import { IOnRowsRenderedParam, RendererArgs } from './BaseTable';
 import Header from './TableHeader';
+import { IColumnProps } from './Column'
 
 /**
- * A wrapper of the Grid for internal only
+ * A wrapper of the Grid for internal onlyz
  */
 class GridTable extends React.PureComponent<GridTableProps> {
   private bodyRef?: Grid;
@@ -146,22 +148,37 @@ class GridTable extends React.PureComponent<GridTableProps> {
   }
 }
 
-export interface GridTableProps extends Omit<FixedSizeGridProps, 'rowCount' | 'overscanColumnCount' | 'columnCount'> {
-  containerStyle?: object;
+export interface GridTableProps<T = any> extends Omit<FixedSizeGridProps, 'rowCount' | 'overscanColumnCount' | 'columnCount'> {
+  containerStyle?: React.CSSProperties;
   classPrefix?: string;
   headerHeight: number | number [];
   headerWidth: number;
   bodyWidth: number;
-  columns: object;
-  data: any;
+  columns: IColumnProps[];
+  data: T[];
   rowKey: string | number;
-  frozenData?: object [];
+  frozenData?: T[];
   overscanRowCount?: number;
   hoveredRowKey?: string | number;
-  onScrollbarPresenceChange?: Function;
-  onRowsRendered?: Function;
-  headerRenderer: Function;
-  rowRenderer: Function;
+  onScrollbarPresenceChange?: TGridTableCallback<IOnScrollbarPresenceChange, void>;
+  onRowsRendered?: TGridTableCallback<IOnRowsRenderedParam, void>;
+  headerRenderer: TGridTableCallback<IHeaderRendererParam, React.ReactElement>;
+  rowRenderer: TGridTableCallback<RendererArgs, React.ReactNode>;
 };
+
+interface IOnScrollbarPresenceChange {
+  size: number;
+  horizontal: boolean;
+  vertical: boolean;
+}
+
+export interface IHeaderRendererParam {
+  cells?: any;
+  columns?: IColumnProps[];
+  style?: React.CSSProperties;
+  headerIndex?: number;
+}
+
+type TGridTableCallback<T, S> = (in_obj: T) => S;
 
 export default GridTable;

@@ -2,24 +2,28 @@ import React from 'react';
 
 import { renderElement } from './utils';
 
-export interface TableHeaderRowProps {
+import { ICellRendererCBParam, IColumnRenderCallback, IColumnProps } from './Column';
+import { IHeaderRendererParam } from './GridTable';
+
+type TTableHeaderRowCB<T, S> = (in_obj: T) => S;
+
+export interface ITableHeaderRowProps {
   isScrolling: boolean;
   className: string;
-  style: object,
-  columns: object[],
+  style: React.CSSProperties,
+  columns: IColumnProps[],
   headerIndex: number;
-  cellRenderer: Function;
-  headerRenderer: Function | React.ReactNode;
+  cellRenderer: IColumnRenderCallback<ICellRendererCBParam>;
+  headerRenderer: TTableHeaderRowCB<IHeaderRendererParam, React.ReactElement>;
   expandColumnKey: string;
   expandIcon: React.ElementType;
   tagName: React.ElementType;
 };
 
-
 /**
  * HeaderRow component for BaseTable
  */
-const TableHeaderRow: React.FunctionComponent<TableHeaderRowProps> = ({
+const TableHeaderRow: React.FunctionComponent<ITableHeaderRowProps> = ({
   className,
   style,
   columns,

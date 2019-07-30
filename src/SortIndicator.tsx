@@ -6,13 +6,15 @@ import SortOrder from './SortOrder';
 export interface SortIndicatorProps {
   sortOrder?: SortOrder.ASC |  SortOrder.DESC;
   className?: string;
-  style?: object;
+  style?: React.CSSProperties;
 };
+
+export type TSortIndicator = React.FunctionComponent<SortIndicatorProps>;
 
 /**
  * default SortIndicator for BaseTable
  */
-const SortIndicator: React.FunctionComponent<SortIndicatorProps> = ({ sortOrder, className, style }) => {
+const SortIndicator: TSortIndicator = ({ sortOrder, className, style }) => {
   const cls = cn('BaseTable__sort-indicator', className, {
     'BaseTable__sort-indicator--descending': sortOrder === SortOrder.DESC,
   });

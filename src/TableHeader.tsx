@@ -1,17 +1,20 @@
 import React from 'react';
+import { IHeaderRendererParam } from './GridTable'
+import { IColumnProps } from './Column';
+import { RendererArgs } from './BaseTable';
 
-export interface TableHeaderProps {
+export interface TableHeaderProps<T = any> {
   className?: string;
-  width: number;
-  height: number;
+  width: string | number;
+  height: string | number;
   headerHeight: number | number[];
   rowWidth: number;
-  rowHeight: number;
-  columns: object[];
-  data: object[],
-  frozenData?: object[],
-  headerRenderer: Function,
-  rowRenderer: Function,
+  rowHeight: number | string;
+  columns: IColumnProps[];
+  data: T[],
+  frozenData?: T[],
+  headerRenderer: ITableHeaderCB<IHeaderRendererParam, React.ReactElement>;
+  rowRenderer: ITableHeaderCB<RendererArgs, React.ReactNode>;
 };
 
 class TableHeader extends React.PureComponent<TableHeaderProps> {
@@ -69,5 +72,7 @@ class TableHeader extends React.PureComponent<TableHeaderProps> {
     this.headerRef = ref;
   }
 }
+
+type ITableHeaderCB<T, S> = (in_obj: T) => S;
 
 export default TableHeader;

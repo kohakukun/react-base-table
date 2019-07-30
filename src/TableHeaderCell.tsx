@@ -1,6 +1,6 @@
 import React from 'react';
 
-export interface TableHeaderCellProps {
+export interface ITableHeaderCellProps {
   className?: string,
   column?: {title: string},
   columnIndex?: number,
@@ -9,7 +9,8 @@ export interface TableHeaderCellProps {
 /**
  * HeaderCell component for BaseTable
  */
-const TableHeaderCell: React.FunctionComponent<TableHeaderCellProps> = ({ className, column, columnIndex }) => 
+export type TTableHeaderCell = React.FunctionComponent<ITableHeaderCellProps>;
+const TableHeaderCell: TTableHeaderCell = ({ className, column, columnIndex }) => 
   (<div className={className}>{column.title}</div>);
 
 

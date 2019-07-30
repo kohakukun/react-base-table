@@ -1,4 +1,5 @@
 import React from 'react';
+import { TColumns } from './utils';
 
 export enum Alignment {
   LEFT = 'left',
@@ -13,7 +14,6 @@ export const FrozenDirection = {
   NONE: false,
 };
 
-
 /**
  * Column for BaseTable
  */
@@ -22,17 +22,55 @@ class Column extends React.Component<IColumnProps> {
   static FrozenDirection = FrozenDirection;
 }
 
+
+export interface IColumnEssential {
+  columns?: TColumns;
+  column?: IColumnProps;
+  columnIndex?: number;
+}
+
+export interface IRowEssential {
+  rowData?: any;
+  rowIndex?: number;
+}
+
+export type IColumnCallback<T> = (in_obj: T) => string;
+export type IColumnRenderCallback<T> = (in_obj: T) => React.ReactElement;
+
+export interface IClassNameCBParam extends IColumnEssential, IRowEssential {
+  cellData: any;
+}
+
+export interface IHeaderClassNameCBParam extends IColumnEssential {
+  headerIndex: number;
+}
+
+export interface IDataGetterCBParam extends IColumnEssential, IRowEssential {}
+
+export interface IHeaderRendererCBParam extends IColumnEssential {
+  headerIndex: number, 
+  container: any
+}
+
+export interface ICellRendererCBParam extends IColumnEssential, IRowEssential {
+  cellData?: any;
+  container?: any;
+  isScrolling?: boolean;
+  headerIndex?: number;
+  expandIcon?: React.ReactNode;
+}
+
 export interface IColumnProps  {
   /**
    * Class name for the column cell, could be a callback to return the class name
    * The callback is of the shape of `({ cellData, columns, column, columnIndex, rowData, rowIndex }) => string`
    */
-  className?: string | Function;
+  className?: string | IColumnCallback<IClassNameCBParam>;
   /**
    * Class name for the column header, could be a callback to return the class name
    * The callback is of the shape of `({ columns, column, columnIndex, headerIndex }) => string`
    */
-  headerClassName?: string | Function;
+  headerClassName?: string | IColumnCallback<IHeaderClassNameCBParam>;
   /**
    * Custom style for the column cell, including the header cells
    */
@@ -49,7 +87,7 @@ export interface IColumnProps  {
    * Custom cell data getter
    * The handler is of the shape of `({ columns, column, columnIndex, rowData, rowIndex }) => node`
    */
-  dataGetter?: Function;
+  dataGetter?: IColumnCallback<IDataGetterCBParam>;
   /**
    * Alignment of the column cell
    */
@@ -94,14 +132,21 @@ export interface IColumnProps  {
    * Custom column cell renderer
    * The renderer receives props `{ cellData, columns, column, columnIndex, rowData, rowIndex, container, isScrolling }`
    */
-  cellRenderer?: Function | React.ReactElement;
+  cellRenderer?: IColumnRenderCallback<ICellRendererCBParam> | React.ElementType;
   /**
    * Custom column header renderer
    * The renderer receives props `{ columns, column, columnIndex, headerIndex, container }`
    */
-  headerRenderer?: Function | React.ReactElement;
+  headerRenderer?: IColumnRenderCallback<IHeaderRendererCBParam> | React.ReactElement;
+  /**
+   * Key
+   */
+  key?: React.ReactElement['key'];
+  /**
+   * placeholder key
+   */
+  __placeholder__: boolean;
 };
 
-
-
 export default Column;
+

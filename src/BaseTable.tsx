@@ -3,18 +3,20 @@ import memoize from 'memoize-one';
 import React from 'react';
 import Column, { Alignment, FrozenDirection, IColumnProps } from './Column';
 import ColumnManager from './ColumnManager';
-import ColumnResizer from './ColumnResizer';
-import ExpandIcon from './ExpandIcon';
-import GridTable from './GridTable';
-import SortIndicator from './SortIndicator';
+import ColumnResizer, {IOnResizeCBParam} from './ColumnResizer';
+import ExpandIcon, {IExpandIconProps} from './ExpandIcon';
+import GridTable, {IHeaderRendererParam} from './GridTable';
+import SortIndicator, {TSortIndicator} from './SortIndicator';
 import SortOrder from './SortOrder';
-import TableCell from './TableCell';
-import TableHeaderCell from './TableHeaderCell';
-import TableHeaderRow from './TableHeaderRow';
-import TableRow from './TableRow';
+import TableCell, {TTableCell} from './TableCell';
+import TableHeaderCell, { TTableHeaderCell, ITableHeaderCellProps } from './TableHeaderCell';
+import TableHeaderRow, {ITableHeaderRowProps} from './TableHeaderRow';
+import TableRow, {ITableRowProps, handlerCollection} from './TableRow';
 import { callOrReturn, cloneArray, flattenOnKeys, getScrollbarSize as defaultGetScrollbarSize, getValue, hasChildren,
   isObjectEqual, noop, normalizeColumns, renderElement, throttle } from './utils';
 import { Align, GridChildComponentProps } from 'react-window';
+
+import { IColumnEssential, IRowEssential } from './Column'
 
 const getContainerStyle = (width:number, maxWidth: number, height: number) => ({
   width,
@@ -30,22 +32,13 @@ const DEFAULT_COMPONENTS = {
   SortIndicator,
 };
 
-
 const RESIZE_THROTTLE_WAIT = 50;
 
-interface ICollectionObject {
-  expanded: string[]; rowData: any; rowIndex: number; rowKey: string;
-  depth: number;
-  isScrolling: boolean;
-  columnIndex: number;
-  headerIndex: number;
-  colummnIndex: number;
-}
-type RendererArgs = GridChildComponentProps & {rowData: any, columns: object[]};
+export type RendererArgs = GridChildComponentProps & {rowData?: any, columns?: IColumnProps[]};
 /**
  * React table component
  */
-class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
+class BaseTable<T=any> extends React.PureComponent<IBaseTableProps<T>, IBaseTableState> {
   private columnManager: ColumnManager;
   private _scrollbarPresenceChanged = false;
   private _scroll = { scrollLeft: 0, scrollTop: 0 };
@@ -127,7 +120,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
    *
    * @param offset
    */
-  public scrollToPosition(offset: {scrollLeft: number, scrollTop: number}) {
+  public scrollToPosition(offset: IOffset) {
     this._scroll = offset;
     this.table && this.table.scrollToPosition(offset);
     this.leftTable && this.leftTable.scrollToTop(offset.scrollTop);
@@ -196,7 +189,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     });
   }
 
-  public renderExpandIcon = ({ rowData, rowIndex, depth, onExpand }: ICollectionObject) => {
+  public renderExpandIcon = ({ rowData, rowIndex, depth, onExpand }: IRenderExpandIcon) => {
     const { rowKey, expandColumnKey, expandIconProps } = this.props;
     if (!expandColumnKey) return null;
 
@@ -249,8 +242,8 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     return <TableRow {...rowProps} />;
   }
 
-  public renderRowCell = ({ isScrolling, columns, column, columnIndex, rowData, rowIndex, expandIcon }:
-    ICollectionObject) => {
+  public renderRowCell = ({ isScrolling, columns, column, columnIndex, rowData, rowIndex, expandIcon } : 
+    IRenderRowCellParam) => {
     if (column[ColumnManager.PlaceholderKey]) {
       return (
         <div
@@ -267,7 +260,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     const cellData = dataGetter
       ? dataGetter({ columns, column, columnIndex, rowData, rowIndex })
       : getValue(rowData, dataKey);
-    const cellProps = { isScrolling, cellData, columns, column, columnIndex, rowData, rowIndex, container: this };
+    const cellProps: ICellProps = { isScrolling, cellData, columns, column, columnIndex, rowData, rowIndex, container: this };
     const cell = renderElement(cellRenderer || <TableCell className={this._prefixClass('row-cell-text')} />, cellProps);
 
     const cellCls = callOrReturn(className, { cellData, columns, column, columnIndex, rowData, rowIndex });
@@ -277,7 +270,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     });
 
     const extraProps = callOrReturn(this.props.cellProps, { columns, column, columnIndex, rowData, rowIndex });
-    const { tagName, ...rest } = extraProps || {};
+    const { tagName, ...rest }: any = extraProps || {};
     const Tag = tagName || 'div';
     return (
       <Tag
@@ -293,7 +286,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     );
   }
 
-  public renderHeader = ({ columns, headerIndex, style }: {style: React.CSSProperties, headerIndex: number}) => {
+  public renderHeader = ({ columns, headerIndex, style }: IHeaderRendererParam) => {
     const { headerClassName, headerRenderer } = this.props;
 
     const headerClass = callOrReturn(headerClassName, { columns, headerIndex });
@@ -304,7 +297,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
       [this._prefixClass('header-row--customized')]: headerRenderer,
     });
 
-    const headerProps = {
+    const headerProps: IHeaderProps = {
       ...extraProps,
       role: 'row',
       key: `header-${headerIndex}`,
@@ -321,9 +314,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     return <TableHeaderRow {...headerProps} />;
   }
 
-  private renderHeaderCell = (
-    { columns, column, columnIndex, headerIndex, expandIcon}:
-    Pick<ICollectionObject, 'columns' | 'column' | 'columnIndex' | 'headerIndex', 'expandIcon'>) => {
+  private renderHeaderCell = ({ columns, column, columnIndex, headerIndex, expandIcon}: IRenderHeaderCellParam) => {
     if (column[ColumnManager.PlaceholderKey]) {
       return (
         <div
@@ -365,7 +356,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
       [this._prefixClass('header-cell--resizing')]: column.key === this.state.resizingKey,
     });
     const extraProps = callOrReturn(headerCellProps, { columns, column, columnIndex, headerIndex });
-    const { tagName, ...rest } = extraProps || {};
+    const { tagName, ...rest }: any = extraProps || {};
     const Tag = tagName || 'div';
     return (
       <Tag
@@ -528,7 +519,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     if (footerHeight === 0) return null;
     return (
       <div className={this._prefixClass('footer')} style={{ height: footerHeight }}>
-        {renderElement(footerRenderer)}
+        {renderElement(footerRenderer, this.props)}
       </div>
     );
   }
@@ -566,7 +557,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     } = this.props;
 
     if (expandColumnKey) {
-      this._data = this._flattenOnKeys(data, this.state.expandedRowKeys, this.props.rowKey);
+      this._data = this._flattenOnKeys(data, this.state.expandedRowKeys, this.props.rowKey as string);
     } else {
       this._data = data;
     }
@@ -635,11 +626,11 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     }
   }
   
-  public componentDidUpdate(prevProps, prevState) {
+  public componentDidUpdate() {
     this._maybeScrollbarPresenceChange();
   }
 
-  _prefixClass(className) {
+  _prefixClass(className : string) : string {
     return `${this.props.classPrefix}__${className}`;
   }
 
@@ -655,7 +646,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     this.rightTable = ref;
   }
 
-  private _getComponent(name) {
+  private _getComponent(name : 'TableCell' | 'TableHeaderCell' | 'ExpandIcon' | 'SortIndicator') {
     if (this.props.components && this.props.components[name]) return this.props.components[name];
     return DEFAULT_COMPONENTS[name];
   }
@@ -777,7 +768,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     }
   }
 
-  private _handleScroll = (args) => {
+  private _handleScroll = (args: IOffset) => {
     const lastScrollTop = this._scroll.scrollTop;
     this.scrollToPosition(args);
     this.props.onScroll(args);
@@ -785,14 +776,14 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     if (args.scrollTop > lastScrollTop) this._maybeCallOnEndReached();
   }
 
-  private _handleVerticalScroll = ({ scrollTop }) => {
+  private _handleVerticalScroll = ({ scrollTop }: _handleVerticalScrollParam) => {
     const lastScrollTop = this._scroll.scrollTop;
     this.scrollToTop(scrollTop);
 
     if (scrollTop > lastScrollTop) this._maybeCallOnEndReached();
   }
 
-  private _handleRowsRendered = (args) => {
+  private _handleRowsRendered = (args: IOnRowsRenderedParam) => {
     this.props.onRowsRendered(args);
 
     if (args.overscanStopIndex > this._lastScannedRowIndex) {
@@ -801,7 +792,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     }
   }
 
-  private _handleRowHover = ({ hovered, rowKey }: {hovered: string[], rowKey: string}) => {
+  private _handleRowHover = ({ hovered, rowKey }: IOnRowHover) => {
     this.setState({ hoveredRowKey: hovered ? rowKey : null });
   }
 
@@ -809,7 +800,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     { expanded, rowData, rowIndex, rowKey }: {expanded: string[], rowData: any, rowIndex: number, rowKey: string}) => {
     const expandedRowKeys = cloneArray(this.state.expandedRowKeys);
     if (expanded) {
-      if (!expandedRowKeys.indexOf(rowKey) >= 0) expandedRowKeys.push(rowKey);
+      if (expandedRowKeys.indexOf(rowKey) >= 0) expandedRowKeys.push(rowKey);
     } else {
       const index = expandedRowKeys.indexOf(rowKey);
       if (index > -1) {
@@ -824,7 +815,8 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     this.props.onExpandedRowsChange(expandedRowKeys);
   }
 
-  _handleColumnResize({ key }, width) {
+  _handleColumnResize(in_obj: IOnResizeCBParam) {
+    const {key, width} = in_obj; 
     this.columnManager.setColumnWidth(key, width);
     this.setState({ resizingWidth: width });
 
@@ -832,7 +824,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
     this.props.onColumnResize({ column, width });
   }
 
-  private _handleColumnResizeStart = ({ key }) => {
+  private _handleColumnResizeStart = ({ key }: IHandleColumnResizeStartParam) => {
     this.setState({ resizingKey: key });
   }
 
@@ -841,7 +833,7 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
   }
 
   private _handleColumnSort = (event: Event) => {
-    const key = event.currentTarget.dataset.key;
+    const key = (event.currentTarget as IEventTargetExtended).dataset.key;
     const { sortBy, sortState, onColumnSort } = this.props;
     let order = SortOrder.ASC;
 
@@ -859,13 +851,13 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
   public static defaultProps = {
     classPrefix: 'BaseTable',
     rowKey: 'id',
-    data: [],
-    frozenData: [],
+    data: [] as any[],
+    frozenData: [] as any[],
     fixed: false,
     headerHeight: 50,
     rowHeight: 50,
     footerHeight: 0,
-    defaultExpandedRowKeys: [],
+    defaultExpandedRowKeys: [] as string[],
     sortBy: {},
     useIsScrolling: false,
     overscanRowCount: 1,
@@ -882,13 +874,107 @@ class BaseTable extends React.PureComponent<IBaseTableProps, IBaseTableState> {
   };
 }
 
+export type TBaseTableCallback<T, S> = (in_obj: T) => S; 
+
+interface IEventTargetExtended extends EventTarget{
+  dataset?: {
+    key: any;
+  }
+}
+
+interface IRowProps extends ITableRowProps {
+  role: string;
+  key: string;
+}
+interface IHeaderProps extends ITableHeaderRowProps {
+  role?: string;
+  key?: string;
+}
+
 interface IBaseTableState {
   scrollbarSize: number;
-  hoveredRowKey?: string;
+  hoveredRowKey?: number;
   resizingKey?: string;
   resizingWidth: number;
   expandedRowKeys: string[];
 }
+
+interface IOffset {
+  scrollLeft: number;
+  scrollTop: number;
+}
+
+interface ISortState {
+  [sortKey: string] : string
+}
+
+interface _handleVerticalScrollParam {
+  scrollTop: number;
+}
+
+interface IHandleColumnResizeStartParam {
+  key: string | null;
+}
+
+export interface IOnRowsRenderedParam {
+  overscanStartIndex?: number;
+  overscanStopIndex?: number;
+  startIndex?: number;
+  stopIndex?: number;
+}
+
+interface IRenderRowCellParam extends IColumnEssential, IRowEssential {
+  isScrolling: boolean;
+  expandIcon: any;
+}
+
+export interface IRenderExpandIcon extends IRowEssential {
+  depth?: number;
+  onExpand?: TBaseTableCallback<string[], void>;
+}
+
+interface IRenderHeaderCellParam extends IColumnEssential {
+  headerIndex: number;
+  expandIcon: any;
+}
+
+interface ICellProps extends IColumnEssential, IRowEssential{
+  tagName?: any;
+  isScrolling?: boolean;
+  cellData?: any;
+  container: any;
+}
+
+export interface IRowRendererCBParam {
+  style?: {
+    width?: string| number;
+    height?: string | number;
+  }
+  isScrolling?: boolean;
+  cells?: any;
+  columns?: IColumnProps[];
+  rowData?: any;
+  rowIndex?: number;
+  depth?: number;
+
+}
+
+export interface IOnRowHover {
+  hovered?: boolean;
+  rowKey?: number | null;
+  rowData?: any;
+  rowIndex?: number;
+  event?: Event; 
+}
+
+export interface IOnRowExpandCBParam {
+  expanded?: any;
+  rowData?: any;
+  rowIndex?: number;
+  rowKey?: string | number;
+}
+
+export type TExpandedRowKeys = string[] | number[];
 
 export interface IBaseTableProps<T = any> {
   /**
@@ -906,7 +992,7 @@ export interface IBaseTableProps<T = any> {
   /**
    * A collection of Column
    */
-  children: React.ReactNode;
+  children: React.ReactElement<IColumnProps>[];
   /**
    * Columns for the table
    */
@@ -959,60 +1045,77 @@ export interface IBaseTableProps<T = any> {
   /**
    * Custom renderer on top of the table component
    */
-  overlayRenderer?: Function | React.ReactElement;
+  overlayRenderer?: TBaseTableCallback<any, React.ReactElement> | React.ReactElement;
   /**
    * Custom renderer when the length of data is 0
    */
-  emptyRenderer?: Function | React.ReactElement;
+  emptyRenderer?: TBaseTableCallback<any, React.ReactElement> | React.ReactElement;
   /**
    * Custom footer renderer, available only if `footerHeight` is larger then 0
    */
-  footerRenderer?: Function | React.ReactElement;
+  footerRenderer?: TBaseTableCallback<any, React.ReactElement> | React.ReactElement;
   /**
    * Custom header renderer
    * The renderer receives props `{ cells, columns, headerIndex }`
    */
-  headerRenderer?: Function | React.ReactElement;
+  headerRenderer?: TBaseTableCallback<any, React.ReactElement> | React.ReactElement;
   /**
    * Custom row renderer
    * The renderer receives props `{ isScrolling, cells, columns, rowData, rowIndex, depth }`
    */
-  rowRenderer?: Function | React.ReactElement;
+  rowRenderer?: TBaseTableCallback<any, React.ReactElement> | React.ReactElement;
   /**
    * Class name for the table header, could be a callback to return the class name
    * The callback is of the shape of `({ columns, headerIndex }) => string`
    */
-  headerClassName?: string | Function;
+  headerClassName?: string | TBaseTableCallback<{columns: IColumnProps[]; headerIndex: number;}, string>;
   /**
    * Class name for the table row, could be a callback to return the class name
    * The callback is of the shape of `({ columns, rowData, rowIndex }) => string`
    */
-  rowClassName?: string | Function
+  rowClassName?: string | TBaseTableCallback<{columns: IColumnProps[]; rowData: any; rowIndex: number;}, string>
   /**
    * Extra props applied to header element
-   * The handler is of the shape of `({ columns, headerIndex }) object`
+   * The handler is of the shape of `({ columns, headerIndex }) => object`
    */
-  headerProps?: object | Function;
+  headerProps?: IHeaderProps | TBaseTableCallback<{columns: IColumnProps[]; headerIndex: number; }, IHeaderProps>;
   /**
    * Extra props applied to header cell element
    * The handler is of the shape of `({ columns, column, columnIndex, headerIndex }) => object`
    */
-  headerCellProps?: object | Function;
+  headerCellProps?: ITableHeaderCellProps | TBaseTableCallback<
+      {
+        columns: IColumnProps[];
+        column: IColumnProps;
+        columnIndex: number;
+        headerIndex: number;
+      },
+      ITableHeaderCellProps
+    >;
   /**
    * Extra props applied to row element
    * The handler is of the shape of `({ columns, rowData, rowIndex }) => object`
    */
-  rowProps?: object | Function;
+  rowProps?: IRowProps | TBaseTableCallback<{ columns: IColumnProps[]; rowData: any; rowIndex: number; }, IRowProps>;
   /**
    * Extra props applied to row cell element
    * The handler is of the shape of `({ columns, column, columnIndex, rowData, rowIndex }) => object`
    */
-  cellProps?: object | Function;
+  cellProps?: ICellProps | TBaseTableCallback<ICellProps, ICellProps>;
   /**
    * Extra props applied to ExpandIcon component
    * The handler is of the shape of `({ rowData, rowIndex, depth, expandable, expanded }) => object`
    */
-  expandIconProps?: object | Function;
+  expandIconProps?: IExpandIconProps | TBaseTableCallback<
+      {
+        rowData?: any;
+        rowIndex?: number;
+        depth?: number;
+        expandable?: boolean;
+        expanded?: boolean;
+      }, 
+      IExpandIconProps
+    >;
   /**
    * The key for the expand column which render the expand icon if the data is a tree
    */
@@ -1024,17 +1127,17 @@ export interface IBaseTableProps<T = any> {
   /**
    * Controlled expanded row keys
    */
-  expandedRowKeys?: string[] | number[];
+  expandedRowKeys?: TExpandedRowKeys;
   /**
    * A callback function when expand or collapse a tree node
    * The handler is of the shape of `({ expanded, rowData, rowIndex, rowKey }) => *`
    */
-  onRowExpand?: Function;
+  onRowExpand?: TBaseTableCallback<IOnRowExpandCBParam, any>;
   /**
    * A callback function when the expanded row keys changed
    * The handler is of the shape of `(expandedRowKeys) => *`
    */
-  onExpandedRowsChange?: Function;
+  onExpandedRowsChange?: TBaseTableCallback<TExpandedRowKeys, any>;
   /**
    * The sort state for the table, will be ignored if `sortState` is set
    */
@@ -1059,17 +1162,17 @@ export interface IBaseTableProps<T = any> {
    * }
    * ```
    */
-  sortState?: object,
+  sortState?: ISortState,
   /**
    * A callback function for the header cell click event
    * The handler is of the shape of `({ column, key, order }) => *`
    */
-  onColumnSort?: Function,
+  onColumnSort?: TBaseTableCallback<{column: IColumnProps; key: any; order: any;}, any>,
   /**
    * A callback function when resizing the column width
    * The handler is of the shape of `({ column, width }) => *`
    */
-  onColumnResize?: Function;
+  onColumnResize?: TBaseTableCallback<{ column: IColumnProps; width: number }, any>;
   /**
    * Adds an additional isScrolling parameter to the row renderer.
    * This parameter can be used to show a placeholder row while scrolling.
@@ -1082,7 +1185,7 @@ export interface IBaseTableProps<T = any> {
   /**
    * Custom scrollbar size measurement
    */
-  getScrollbarSize?: Function;
+  getScrollbarSize?: () => number;
   /**
    * A callback function when scrolling the table
    * The handler is of the shape of `({ scrollLeft, scrollTop, horizontalScrollDirection, verticalScrollDirection, scrollUpdateWasRequested }) => *`
@@ -1094,12 +1197,20 @@ export interface IBaseTableProps<T = any> {
    * `scrollUpdateWasRequested` is a boolean. This value is true if the scroll was caused by `scrollTo*`,
    * and false if it was the result of a user interaction in the browser.
    */
-  onScroll?: Function;
+  onScroll?: TBaseTableCallback<{
+        scrollLeft?: number;
+        scrollTop?: number;
+        horizontalScrollDirection?: string;
+        verticalScrollDirection?: string;
+        scrollUpdateWasRequested?: boolean;
+      }, 
+      any
+    >;
   /**
    * A callback function when scrolling the table within `onEndReachedThreshold` of the bottom
    * The handler is of the shape of `({ distanceFromEnd }) => *`
    */
-  onEndReached?: Function;
+  onEndReached?: TBaseTableCallback<{distanceFromEnd?: number}, any>;
   /**
    * Threshold in pixels for calling `onEndReached`.
    */
@@ -1108,26 +1219,39 @@ export interface IBaseTableProps<T = any> {
    * A callback function with information about the slice of rows that were just rendered
    * The handler is of the shape of `({ overscanStartIndex, overscanStopIndex, startIndex， stopIndex }) => *`
    */
-  onRowsRendered?: Function;
+  onRowsRendered?: TBaseTableCallback<{
+      overscanStartIndex?: number;
+      overscanStopIndex?: number;
+      startIndex?: number;
+      stopIndex?: number;
+    }, 
+    any
+  >;
   /**
    * A callback function when the scrollbar presence state changed
    * The handler is of the shape of `({ size, vertical, horizontal }) => *`
    */
-  onScrollbarPresenceChange?: Function;
+  onScrollbarPresenceChange?: TBaseTableCallback<{
+      size?: number;
+      vertical?: boolean;
+      horizontal?: boolean;
+    },
+    any
+  >;
   /**
-   * A object for the row event handlers
+   * An object for the row event handlers
    * Each of the keys is row event name, like `onClick`, `onDoubleClick` and etc.
    * Each of the handlers is of the shape of `({ rowData, rowIndex, rowKey, event }) => object`
    */
-  rowEventHandlers?: object;
+  rowEventHandlers?: handlerCollection;
   /**
-   * A object for the custom components, like `ExpandIcon` and `SortIndicator`
+   * An object for the custom components, like `ExpandIcon` and `SortIndicator`
    */
   components: {
-    TableCell: Function;
-    TableHeaderCell: Function;
+    TableCell: TTableCell;
+    TableHeaderCell: TTableHeaderCell;
     ExpandIcon: Function;
-    SortIndicator: Function;
+    SortIndicator: TSortIndicator;
   },
 };
 

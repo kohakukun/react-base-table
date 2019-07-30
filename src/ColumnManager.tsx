@@ -1,25 +1,38 @@
 import { FrozenDirection, IColumnProps } from './Column';
+type anyFunction<T> = (...args: any[]) => T;
+interface ICache {
+  mainColumns?: IColumnProps[];
+  visibleColumns?: IColumnProps[];
+  hasFrozenColumns?: boolean;
+  hasLeftFrozenColumns?: boolean;
+  hasRightFrozenColumns?: boolean;
+  leftFrozenColumns?: IColumnProps[];
+  rightFrozenColumns?: IColumnProps[];  
+  columnsWidth?: number;
+  leftFrozenColumnsWidth?: number;
+  rightFrozenColumnsWidth?: number;
+}
 
 export default class ColumnManager {
 
-  private _cached: {[key: string]: any} = {};
+  private _cached: ICache = {};
   private _columns: IColumnProps[];
   private _origColumns: IColumnProps[];
-  private _fixed: IColumnProps[];
+  private _fixed: boolean;
   private _columnStyles: {[key: string]: React.CSSProperties};
   
-  constructor(columns: IColumnProps, fixed: IColumnProps[]) {
+  constructor(columns: IColumnProps[], fixed: boolean) {
     this._origColumns = [];
     this.reset(columns, fixed);
   }
 
-  private _cache(key: string, fn: Function) {
+  private _cache<K extends keyof ICache>(key: K, fn: anyFunction<ICache[K]>) {
     if (key in this._cached) return this._cached[key];
     this._cached[key] = fn();
     return this._cached[key];
   }
 
-  public reset(columns: IColumnProps[], fixed: IColumnProps[]) {
+  public reset(columns: IColumnProps[], fixed: boolean) {
     this._columns = columns.map(column => {
       let width = column.width;
       if (column.resizable) {
@@ -84,6 +97,7 @@ export default class ColumnManager {
       const mainColumns: IColumnProps[] = [];
       this.getLeftFrozenColumns().forEach((column: IColumnProps) => {
         //columns placeholder for the fixed table above them
+        
         mainColumns.push({ ...column, [ColumnManager.PlaceholderKey]: true });
       });
       this.getVisibleColumns().forEach((column: IColumnProps) => {
@@ -147,7 +161,7 @@ export default class ColumnManager {
     this._columnStyles[column.key] = this.recomputeColumnStyle(column);
   }
 
-  getColumnStyle(key: string) {
+  getColumnStyle(key: React.Key) {
     return this._columnStyles[key];
   }
 
@@ -191,7 +205,7 @@ export default class ColumnManager {
     }, {} as {[key: string]: React.CSSProperties});
   }
 
-  static PlaceholderKey = '__placeholder__';
+  static PlaceholderKey: '__placeholder__' = '__placeholder__';
 }
 
 

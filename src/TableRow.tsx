@@ -1,32 +1,35 @@
 import React from 'react';
 import { renderElement } from './utils';
+import { IRowRendererCBParam, IRenderExpandIcon, IOnRowHover, IOnRowExpandCBParam } from './BaseTable';
+import { ICellRendererCBParam } from './Column';
 
 type handlerArgs = { rowData: any, rowIndex: number, rowKey: string | number, event: Event };
-type handlerCollection = {[key: string]: (args: handlerArgs) => void};
+export type handlerCollection = {[key: string]: (args: handlerArgs) => void};
+type ITableRowCB<T, S> = (in_obj: T) => S;
 
-export interface TableRowProps {
-  isScrolling: boolean,
-  className: string,
-  style: object,
-  columns: any [],
-  rowData: any,
-  rowIndex: number,
-  rowKey: string | number,
-  expandColumnKey: string,
-  depth?: number,
-  rowEventHandlers?: handlerCollection,
-  rowRenderer: Function | React.ReactElement,
-  cellRenderer: Function,
-  expandIconRenderer: Function,
-  onRowHover: Function,
-  onRowExpand: Function,
-  tagName: React.ElementType,
+export interface ITableRowProps {
+  isScrolling: boolean;
+  className: string;
+  style: React.CSSProperties;
+  columns: any [];
+  rowData: any;
+  rowIndex: number;
+  rowKey: number;
+  expandColumnKey: string;
+  depth?: number;
+  rowEventHandlers?: handlerCollection;
+  rowRenderer: ITableRowCB<IRowRendererCBParam, React.ReactElement>;
+  cellRenderer: ITableRowCB<ICellRendererCBParam, React.ElementType>;
+  expandIconRenderer: ITableRowCB<IRenderExpandIcon, React.ReactNode>;
+  onRowHover: ITableRowCB<IOnRowHover, void>;
+  onRowExpand: ITableRowCB<IOnRowExpandCBParam, any>;
+  tagName: React.ElementType;
 };
 
 /**
  * Row component for BaseTable
  */
-class TableRow extends React.PureComponent<TableRowProps> {
+class TableRow extends React.PureComponent<ITableRowProps> {
   public render() {
     /* eslint-disable no-unused-vars */
     const {
