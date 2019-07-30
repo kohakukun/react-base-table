@@ -8,7 +8,7 @@ const INVALID_VALUE: null = null;
 // copied from https://github.com/mzabriskie/react-draggable/blob/master/lib/utils/domFns.js
 export function addUserSelectStyles(doc: Document) {
   if (!doc) return;
-  let styleEl = doc.getElementById('react-draggable-style-el');
+  let styleEl = doc.getElementById('react-draggable-style-el') as IHTMLElementExtended;
   if (!styleEl) {
     styleEl = doc.createElement('style');
     styleEl.type = 'text/css';
@@ -20,11 +20,11 @@ export function addUserSelectStyles(doc: Document) {
   if (doc.body) addClassName(doc.body, 'react-draggable-transparent-selection');
 }
 
-export function removeUserSelectStyles(doc) {
+export function removeUserSelectStyles(doc: Document) {
   try {
     if (doc && doc.body) removeClassName(doc.body, 'react-draggable-transparent-selection');
-    if (doc.selection) {
-      doc.selection.empty();
+    if ((doc as any).selection) {
+      (doc as any).selection.empty();
     } else {
       window.getSelection().removeAllRanges(); // remove selection caused by scroll
     }
@@ -146,12 +146,24 @@ class ColumnResizer extends React.PureComponent<IColumnResizerProps> {
   }
 }
 
+interface IHTMLElementExtended extends HTMLElement {
+  type?: string
+};
 
+type IColumnResizerCallBack<T> = (param: T) => any;
+export interface IOnResizeStartCBParam {
+  column? : IColumnProps;
+  key?: React.Key;
+}
 export interface IColumnResizerProps {
+  /**
+   * className
+   */
+  className?: string;
   /**
    * Custom style for the drag handler
    */
-  style?: object;
+  style?: React.CSSProperties;
   /**
    * The column object to be dragged
    */
@@ -160,17 +172,18 @@ export interface IColumnResizerProps {
    * A callback function when resizing started
    * The callback is of the shape of `(column) => *`
    */
-  onResizeStart?: Function;
+  onResizeStart?: IColumnResizerCallBack<IOnResizeStartCBParam>;
+
   /**
    * A callback function when resizing the column
    * The callback is of the shape of `(column, width) => *`
    */
-  onResize?: Function;
+  onResize?: (param1?: IColumnProps, width?: number, column?: IColumnProps) => any;
   /**
    * A callback function when resizing stopped
    * The callback is of the shape of `(column) => *`
    */
-  onResizeStop?: Function;
+  onResizeStop?: (column: IColumnProps) => any;
   /**
    * Minimum width of the column could be resized to if the column's `minWidth` is not set
    */

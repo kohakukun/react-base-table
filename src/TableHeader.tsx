@@ -1,17 +1,21 @@
 import React from 'react';
+import { IHeaderRendererParam } from './GridTable'
+import { IColumnProps, IHeaderRendererCBParam, RowDataType } from './Column';
+import { RendererArgs, IRowRendererCBParam } from './BaseTable';
 
-export interface TableHeaderProps {
+export interface TableHeaderProps<T = any> {
   className?: string;
-  width: number;
-  height: number;
+  width: React.Key;
+  height: React.Key;
   headerHeight: number | number[];
   rowWidth: number;
-  rowHeight: number;
-  columns: object[];
-  data: object[],
-  frozenData?: object[],
-  headerRenderer: Function,
-  rowRenderer: Function,
+  rowHeight: React.Key;
+  columns: IColumnProps[];
+  data: T[],
+  frozenData?: T[],
+  headerRenderer: React.ComponentType<IHeaderRendererParam>;
+  rowRenderer: React.ComponentType<RendererArgs>;
+  hoveredRowKey?: React.Key;
 };
 
 class TableHeader extends React.PureComponent<TableHeaderProps> {
@@ -23,19 +27,21 @@ class TableHeader extends React.PureComponent<TableHeaderProps> {
   }
 
   public renderHeaderRow = (height: number, index: number) => {
-    const { columns, headerRenderer } = this.props;
+    const { columns, headerRenderer: HeaderRenderer } = this.props;
     if (height <= 0) return null;
 
     const style: React.CSSProperties = { width: '100%', height };
-    return headerRenderer({ style, columns, headerIndex: index });
+    const headerProps: IHeaderRendererCBParam = { style, columns, headerIndex: index };
+    return <HeaderRenderer {...headerProps} />;
   }
 
-  public renderFrozenRow = (rowData: any, index: number) => {
-    const { columns, rowHeight, rowRenderer } = this.props;
+  public renderFrozenRow = (rowData: RowDataType, index: number) => {
+    const { columns, rowHeight, rowRenderer: RowRenderer } = this.props;
     const style = { width: '100%', height: rowHeight };
     // for frozen row the `rowIndex` is negative
     const rowIndex = -index - 1;
-    return rowRenderer({ style, columns, rowData, rowIndex });
+    const rowProps: IRowRendererCBParam = { style, columns, rowData, rowIndex };
+    return <RowRenderer {...rowProps}/>;
   }
 
   public render() {

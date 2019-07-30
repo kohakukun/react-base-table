@@ -1,32 +1,34 @@
 import React from 'react';
 import { renderElement } from './utils';
+import { IRowRendererCBParam, IRenderExpandIcon, IOnRowHover, IOnRowExpandCBParam, ICellProps } from './BaseTable';
+import { ICellRendererCBParam, RowDataType, IColumnProps } from './Column';
 
-type handlerArgs = { rowData: any, rowIndex: number, rowKey: string | number, event: Event };
-type handlerCollection = {[key: string]: (args: handlerArgs) => void};
+type handlerArgs = { rowData: RowDataType, rowIndex: number, rowKey: React.Key, event: Event };
+export type THandlerCollection = {[key: string]: (args: handlerArgs) => void};
 
-export interface TableRowProps {
-  isScrolling: boolean,
-  className: string,
-  style: object,
-  columns: any [],
-  rowData: any,
-  rowIndex: number,
-  rowKey: string | number,
-  expandColumnKey: string,
-  depth?: number,
-  rowEventHandlers?: handlerCollection,
-  rowRenderer: Function | React.ReactElement,
-  cellRenderer: Function,
-  expandIconRenderer: Function,
-  onRowHover: Function,
-  onRowExpand: Function,
-  tagName: React.ElementType,
+export interface ITableRowProps<T=RowDataType> {
+  isScrolling?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+  columns: IColumnProps[];
+  rowData: T;
+  rowIndex: number;
+  rowKey?: React.Key;
+  expandColumnKey?: string;
+  depth?: number;
+  rowEventHandlers?: THandlerCollection;
+  rowRenderer?: React.ComponentType<IRowRendererCBParam> | React.ReactNode;
+  cellRenderer?: React.ComponentType<ICellRendererCBParam<T>>;
+  expandIconRenderer?: React.ComponentType<IRenderExpandIcon<T>>;
+  onRowHover?: (args: IOnRowHover) => void;
+  onRowExpand?: (args: IOnRowExpandCBParam) => any;
+  tagName?: React.ElementType;
 };
 
 /**
  * Row component for BaseTable
  */
-class TableRow extends React.PureComponent<TableRowProps> {
+class TableRow<T=any> extends React.PureComponent<ITableRowProps<T>> {
   public render() {
     /* eslint-disable no-unused-vars */
     const {
@@ -40,8 +42,8 @@ class TableRow extends React.PureComponent<TableRowProps> {
       depth,
       rowEventHandlers,
       rowRenderer,
-      cellRenderer,
-      expandIconRenderer,
+      cellRenderer: CellRenderer,
+      expandIconRenderer: ExpandIconRenderer,
       tagName: Tag,
       // omit the following from rest
       rowKey,
@@ -51,17 +53,22 @@ class TableRow extends React.PureComponent<TableRowProps> {
     } = this.props;
     /* eslint-enable no-unused-vars */
 
-    const expandIcon = expandIconRenderer({ rowData, rowIndex, depth, onExpand: this.handleExpand });
-    let cells = columns.map((column, columnIndex) =>
-      cellRenderer({
-        isScrolling,
-        columns,
-        column,
-        columnIndex,
-        rowData,
-        rowIndex,
-        expandIcon: column.key === expandColumnKey && expandIcon,
-      })
+    const expandIconProps: IRenderExpandIcon<T> = { rowData, rowIndex, depth, onExpand: this.handleExpand };
+    const expandIcon = <ExpandIconRenderer {...expandIconProps}/>;
+
+
+    let cells = columns.map((column, columnIndex) => {
+        const cellProps: ICellProps<T> = {
+          isScrolling,
+          columns,
+          column,
+          columnIndex,
+          rowData,
+          rowIndex,
+          expandIcon: column.key === expandColumnKey && expandIcon,
+        };
+        return  <CellRenderer {...cellProps}/>
+      }
     );
 
     if (rowRenderer) {
@@ -82,7 +89,7 @@ class TableRow extends React.PureComponent<TableRowProps> {
     onRowExpand && onRowExpand({ expanded, rowData, rowIndex, rowKey });
   }
 
-  private getEventHandlers = (handlers: handlerCollection = {}) => {
+  private getEventHandlers = (handlers: THandlerCollection = {}) => {
     const { rowData, rowIndex, rowKey, onRowHover } = this.props;
     const eventHandlers: {[key:string]: (event:Event) =>  void} = {};
     Object.keys(handlers).forEach(eventKey => {

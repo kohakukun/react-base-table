@@ -2,44 +2,49 @@ import React from 'react';
 
 import { renderElement } from './utils';
 
-export interface TableHeaderRowProps {
-  isScrolling: boolean;
-  className: string;
-  style: object,
-  columns: object[],
-  headerIndex: number;
-  cellRenderer: Function;
-  headerRenderer: Function | React.ReactNode;
-  expandColumnKey: string;
-  expandIcon: React.ElementType;
-  tagName: React.ElementType;
+import { ICellRendererCBParam, IColumnProps } from './Column';
+import { IHeaderRendererParam } from './GridTable';
+import { TTagname } from './BaseTable';
+
+export interface ITableHeaderRowProps<T=any> {
+  isScrolling?: boolean;
+  className?: string;
+  style?: React.CSSProperties,
+  columns: IColumnProps[],
+  headerIndex?: number;
+  cellRenderer?: React.ComponentType<ICellRendererCBParam<T>>;
+  headerRenderer?: React.ComponentType<IHeaderRendererParam>;
+  expandColumnKey?: string;
+  expandIcon?: React.ElementType;
+  tagName?: TTagname;
 };
 
-
+type TTableHeaderRow<T = any> = React.FunctionComponent<ITableHeaderRowProps<T>>;
 /**
  * HeaderRow component for BaseTable
  */
-const TableHeaderRow: React.FunctionComponent<TableHeaderRowProps> = ({
+const TableHeaderRow: TTableHeaderRow= ({
   className,
   style,
   columns,
   headerIndex,
-  cellRenderer,
+  cellRenderer: CellRenderer,
   headerRenderer,
   expandColumnKey,
   expandIcon: ExpandIcon,
   tagName: Tag,
   ...rest
 }) => {
-  let cells = columns.map((column, columnIndex) =>
-    cellRenderer({
+  let cells = columns.map((column, columnIndex) => {
+    const cellProps: ICellRendererCBParam = {
       columns,
       column,
       columnIndex,
       headerIndex,
       expandIcon: column.key === expandColumnKey && <ExpandIcon />,
-    })
-  );
+    };
+    return <CellRenderer {...cellProps}/>
+  });
 
   if (headerRenderer) {
     cells = renderElement(headerRenderer, { cells, columns, headerIndex });

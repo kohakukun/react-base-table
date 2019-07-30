@@ -1,12 +1,24 @@
 import React from 'react';
+import { IColumnProps } from './Column';
 
-export function renderElement(renderer, props: any) {
+function isValidElementType<P>(object: any): object is React.ElementType<P> {
+  return object.prototype && object.prototype.isReactComponent;
+};
+
+function isFunctionComponent<P>(object: any): object is React.FunctionComponent<P> {
+  return object.hasOwnProperty('defaultProps');
+};
+
+export function renderElement(
+  renderer: React.ReactNode | React.ElementType,
+  props?: any
+  ) {
   if (React.isValidElement(renderer)) {
     return React.cloneElement(renderer, props);
   } else if (typeof renderer === 'function') {
-    if (renderer.prototype && renderer.prototype.isReactComponent) {
+    if (isValidElementType(renderer)) {
       return React.createElement(renderer, props);
-    } else if (renderer.defaultProps) {
+    } else if (isFunctionComponent(renderer)) {
       return renderer({ ...renderer.defaultProps, ...props });
     }
     return renderer(props);
@@ -17,13 +29,12 @@ export function renderElement(renderer, props: any) {
 
 export type GetProps<C> = C extends React.ElementType<infer P> ? P : never;
 
-export function normalizeColumns<T extends React.ElementType = React.ElementType<any>>(elements: React.ElementType<T>) {
-  type P = GetProps<T>;
-  const columns: P[] = [];
-  React.Children.forEach(elements, element => {
+export function normalizeColumns(elements: React.ReactElement<IColumnProps>[]) {
+  const columns: IColumnProps[] = [];
+  React.Children.forEach<React.ReactElement<IColumnProps>>(elements, element => {
     if (React.isValidElement(element) && element.key) {
-      const column = { ...element.props, key: element.key };
-      columns.push(column as P);
+      const column: IColumnProps = { ...element.props, key: element.key };
+      columns.push(column);
     }
   });
   return columns;
@@ -194,7 +205,7 @@ export function throttle(fn: Function, wait: number) {
 
 // copied from https://github.com/react-bootstrap/dom-helpers
 let scrollbarSize: number;
-export function getScrollbarSize(recalculate: boolean) {
+export function getScrollbarSize(recalculate?: boolean) {
   if ((!scrollbarSize && scrollbarSize !== 0) || recalculate) {
     if (typeof window !== 'undefined' && window.document && window.document.createElement) {
       let scrollDiv = document.createElement('div');
