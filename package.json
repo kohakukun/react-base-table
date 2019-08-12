@@ -49,7 +49,7 @@
     "@types/memoize-one": "^4.1.1",
     "@types/react": "^16.8.23",
     "@types/react-virtualized-auto-sizer": "^1.0.0",
-    "@types/react-window": "~1.8.0",
+    "@types/react-window": "^1.8.1",
     "classnames": "^2.2.5",
     "memoize-one": "^5.0.0",
     "prop-types": "^15.7.0",
