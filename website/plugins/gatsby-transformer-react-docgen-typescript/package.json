@@ -1,0 +1,29 @@
+{
+  "name": "gatsby-transformer-react-docgen-typescript",
+  "description": "Expose React component metadata and prop information from typescript files as GraphQL types",
+  "version": "5.0.15",
+  "dependencies": {
+    "@babel/code-frame": "^7.5.5",
+    "@babel/runtime": "^7.6.2",
+    "@babel/types": "^7.6.1",
+    "ast-types": "^0.13.2",
+    "common-tags": "^1.8.0",
+    "react-docgen": "^5.0.0-beta.1",
+    "react-docgen-typescript": "^1.15.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.6.2",
+    "@babel/core": "^7.6.2",
+    "babel-preset-gatsby-package": "^0.2.7",
+    "cross-env": "^5.2.1",
+    "lodash": "^4.17.15"
+  },
+  "license": "MIT",
+  "main": "index.js",
+  "peerDependencies": {
+    "gatsby": "^2.0.15"
+  },
+  "engines": {
+    "node": ">=8.0.0"
+  }
+}
