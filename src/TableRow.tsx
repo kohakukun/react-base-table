@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React from 'react';
 import { ICellProps, IOnRowExpandCBParam, IOnRowHover, IRenderExpandIcon, IRowRendererCBParam } from './BaseTable';
 import { ICellRendererCBParam, IColumnProps, RowDataType } from './Column';
 import { renderElement } from './utils';
