@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React from 'react';
 import { IColumnProps } from './Column';
 
 import { addClassName, noop, removeClassName, isMouseEvent, isTouchEvent, eventsFor } from './utils';

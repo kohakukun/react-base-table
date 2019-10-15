@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React from 'react';
 import AutoSizer from 'react-virtualized-auto-sizer';
 
 /**

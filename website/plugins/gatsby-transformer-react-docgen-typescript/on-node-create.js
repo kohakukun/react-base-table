@@ -1,14 +1,15 @@
-const fs = require('fs')
 const path = require('path')
 var tsxParser = require('react-docgen-typescript')
-// See if there is a tsconfig.json; if so, use that
+
 try {
-  tsxParser = tsxParser.withDefaultConfig({
-    propFilter(prop) {
-      if (prop.parent) {
-        return !prop.parent.fileName.includes('node_modules')
-      }
-      return true
+  tsxParser = tsxParser.withCustomConfig(
+    path.resolve(__dirname, '../../../tsconfig.json'), 
+    {
+      propFilter(prop) {
+        if (prop.parent) {
+          return !prop.parent.fileName.includes('node_modules')
+        }
+        return true
     },
   })
 } catch (err) {

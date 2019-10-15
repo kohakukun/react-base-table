@@ -1,5 +1,5 @@
 import cn from 'classnames';
-import * as React from 'react';
+import React from 'react';
 import { Align, FixedSizeGrid as Grid, FixedSizeGridProps, GridOnItemsRenderedProps } from 'react-window';
 
 import { IOnRowsRenderedParam, RendererArgs } from './BaseTable';
