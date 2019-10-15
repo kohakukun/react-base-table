@@ -1,17 +1,9 @@
-### [IMPORTANT]
-This is an unpublished version. Typescript support added using `react-docgen-typescript`. 
 
-# gatsby-transformer-react-docgen
-
-
+# gatsby-transformer-react-docgen-typescript
 Parses inline component-documentation using
-[react-docgen](https://github.com/reactjs/react-docgen).
+[react-docgen](https://github.com/reactjs/react-docgen) and 
+[react-docgen-typescript](https://github.com/styleguidist/react-docgen-typescript)
 
-## Install
-
-```
-npm install --save gatsby-transformer-react-docgen
-```
 
 ## Usage
 
@@ -19,7 +11,7 @@ Add a plugin-entry to your `gatsby-config.js`
 
 ```js
 module.exports = {
-  plugins: [`gatsby-transformer-react-docgen`],
+  plugins: [`gatsby-transformer-react-docgen-typescript`],
 }
 ```
 
@@ -31,7 +23,7 @@ argument for more Gatsby specific handler behavior.
 module.exports = {
   plugins: [
     {
-      resolve: "gatsby-transformer-react-docgen",
+      resolve: "gatsby-transformer-react-docgen-typescript",
       options: {
         resolver: require("./custom-resolver"),
       },
@@ -53,7 +45,7 @@ how to properly resolve your local babel config. See the [react-docgen documenta
 module.exports = {
   plugins: [
     {
-      resolve: "gatsby-transformer-react-docgen",
+      resolve: "gatsby-transformer-react-docgen-typescript",
       options: {
         babelrcRoots: ["../packages/*"],
       },
@@ -66,7 +58,6 @@ You'll also need to include a source-plugin, such as
 [gatsby-source-filesystem](https://www.npmjs.com/package/gatsby-source-filesystem),
 so that the transformer has access to source data.
 
-> Note: that at least one of your React Components must have PropTypes defined.
 
 ## How to query
 
