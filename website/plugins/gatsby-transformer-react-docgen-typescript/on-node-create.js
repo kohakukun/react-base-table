@@ -22,9 +22,8 @@ var _interopRequireDefault = require(`@babel/runtime/helpers/interopRequireDefau
 exports.__esModule = true
 exports.default = onCreateNode
 
-// var _parse = _interopRequireDefault(require(`./parse`))
 const _parse = _interopRequireDefault(
-  require('../../node_modules/gatsby-transformer-react-docgen/parse')
+  require('gatsby-transformer-react-docgen/parse')
 )
 
 const propsId = (parentId, name) => `${parentId}--ComponentProp-${name}`
