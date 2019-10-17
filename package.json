@@ -49,7 +49,7 @@
     "@babel/runtime": "^7.0.0",
     "@types/classnames": "^2.2.9",
     "@types/memoize-one": "^4.1.1",
-    "@types/react": "^16.9.2",
+    "@types/react": "^16.9.9",
     "@types/react-test-renderer": "^16.9.0",
     "@types/react-virtualized-auto-sizer": "^1.0.0",
     "@types/react-window": "^1.8.1",
@@ -108,6 +108,13 @@
     "transformIgnorePatterns": [
       "<rootDir>/node_modules/"
     ],
-    "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"]
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json",
+      "node"
+    ]
   }
 }

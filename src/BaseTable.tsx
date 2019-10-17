@@ -38,7 +38,7 @@ const DEFAULT_COMPONENTS = {
 const RESIZE_THROTTLE_WAIT = 50;
 
 // used for memoization
-const EMPTY_ARRAY = [];
+const EMPTY_ARRAY: any[] = [];
 
 type RendererArgsReduced = Omit<
   GridChildComponentProps & { rowData?: any; columns?: IColumnProps[] },
@@ -95,7 +95,7 @@ class BaseTable<T extends RowDataType = RowDataType, C = any> extends React.Pure
   private rightTable: GridTable;
   private tableNode: HTMLDivElement;
   private _flattenOnKeys: (tree: any[], keys: string[], dataKey: string) => any[];
-
+  private _resetColumnManager: (columns: IColumnProps[], fixed: any) => any;
   private _getLeftTableContainerStyle = memoize(getContainerStyle);
   constructor(props: IBaseTableProps) {
     super(props);
@@ -116,7 +116,7 @@ class BaseTable<T extends RowDataType = RowDataType, C = any> extends React.Pure
       this._depthMap = {};
       return flattenOnKeys(tree, keys, this._depthMap, dataKey);
     });
-    this._resetColumnManager = memoize((columns, fixed) => {
+    this._resetColumnManager = memoize((columns: IColumnProps[], fixed: any) => {
       this.columnManager.reset(columns, fixed);
     }, isObjectEqual);
 
@@ -663,7 +663,7 @@ class BaseTable<T extends RowDataType = RowDataType, C = any> extends React.Pure
     }
   }
 
-  public componentDidUpdate(prevProps, prevState) {
+  public componentDidUpdate(prevProps: IBaseTableProps, prevState: IBaseTableState) {
     const { data, height, maxHeight } = this.props;
     if (data !== prevProps.data) {
       this._lastScannedRowIndex = -1;
@@ -1028,7 +1028,6 @@ BaseTable.defaultProps = {
   onExpandedRowsChange: noop,
   onColumnSort: noop,
   onColumnResize: noop,
-  onColumnResizeEnd: noop,
 };
 interface IRowProps<T= any> extends ITableRowProps<T> {
   role: string;
@@ -1313,7 +1312,8 @@ export interface IBaseTableProps<T = any, C = any> {
    * A callback function when resizing the column width ends
    * The handler is of the shape of `({ column, width }) => *`
    */
-  onColumnResizeEnd: PropTypes.func;
+  // onColumnResizeEnd: PropTypes.func;
+  onColumnResizeEnd?: (param: { column: IColumnProps; width: number }) => any;
   /**
    * Adds an additional isScrolling parameter to the row renderer.
    * This parameter can be used to show a placeholder row while scrolling.

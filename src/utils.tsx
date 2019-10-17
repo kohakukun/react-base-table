@@ -1,7 +1,19 @@
 import React from 'react';
 import { IColumnProps } from './Column';
 
-export function renderElement(renderer: React.ElementType | React.ReactElement, props?: any) {
+interface IDefaultPropsContainer extends Function {
+  defaultProps: any;
+}
+
+const isReactElementOrElementType = (x: any): x is (React.ElementType | React.ReactElement) => {
+  return true;
+};
+
+const isDefaultPropsContainer = (x: any): x is IDefaultPropsContainer => {
+  return true;
+};
+
+export function renderElement(renderer: React.ElementType | React.ReactElement | IDefaultPropsContainer, props?: any) {
   if (!renderer) {
     return null;
   }
@@ -9,12 +21,12 @@ export function renderElement(renderer: React.ElementType | React.ReactElement, 
   if (React.isValidElement(renderer)) {
     return React.cloneElement(renderer, props);
   } else if (typeof renderer === 'function') {
-    if (renderer.prototype && renderer.prototype.isReactComponent) {
+    // if (renderer.prototype && renderer.prototype.isReactComponent) {
+    if (isReactElementOrElementType(renderer)) {
       return React.createElement(renderer, props);
-    } else if (renderer.defaultProps) {
+    } else if (isDefaultPropsContainer(renderer)) {
       return renderer({ ...renderer.defaultProps, ...props });
     }
-    return renderer(props);
   } else {
     return null;
   }
