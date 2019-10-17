@@ -3,15 +3,16 @@ var tsxParser = require('react-docgen-typescript')
 
 try {
   tsxParser = tsxParser.withCustomConfig(
-    path.resolve(__dirname, '../../../tsconfig.json'), 
+    path.resolve(__dirname, '../../../tsconfig.json'),
     {
       propFilter(prop) {
         if (prop.parent) {
           return !prop.parent.fileName.includes('node_modules')
         }
         return true
-    },
-  })
+      },
+    }
+  )
 } catch (err) {
   console.log('Error in initiating react-docgen-typescript: ', err)
 }
@@ -21,7 +22,10 @@ var _interopRequireDefault = require(`@babel/runtime/helpers/interopRequireDefau
 exports.__esModule = true
 exports.default = onCreateNode
 
-var _parse = _interopRequireDefault(require(`./parse`))
+// var _parse = _interopRequireDefault(require(`./parse`))
+const _parse = _interopRequireDefault(
+  require('../../node_modules/gatsby-transformer-react-docgen/parse')
+)
 
 const propsId = (parentId, name) => `${parentId}--ComponentProp-${name}`
 
